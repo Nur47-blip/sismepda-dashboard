@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  GURU
+}
+
+enum AttendanceStatus {
+  HADIR
+  SAKIT
+  IZIN
+  ALFA
+  DISPENSASI
+}
+
+model User {
+  id String @id @default(cuid())
+  email String? @unique
+  nip String? @unique
+  passwordHash String
+  name String
+  phone String?
+  role Role @default(GURU)
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  homeroomClass SchoolClass?
+  submissions AttendanceDay[]
+}
+
+model SchoolClass {
+  id String @id @default(cuid())
+  name String @unique
+  grade String
+  homeroomUserId String? @unique
+  homeroomUser User? @relation(fields: [homeroomUserId], references: [id], onDelete: SetNull)
+  students Student[]
+  attendanceDays AttendanceDay[]
+}
+
+model Student {
+  id String @id @default(cuid())
+  nisn String @unique
+  name String
+  active Boolean @default(true)
+  classId String
+  schoolClass SchoolClass @relation(fields: [classId], references: [id])
+  attendances Attendance[]
+}
+
+model AttendanceDay {
+  id String @id @default(cuid())
+  date DateTime
+  classId String
+  submittedById String
+  submittedAt DateTime @default(now())
+  schoolClass SchoolClass @relation(fields: [classId], references: [id])
+  submittedBy User @relation(fields: [submittedById], references: [id])
+  attendances Attendance[]
+  @@unique([classId, date])
+}
+
+model Attendance {
+  id String @id @default(cuid())
+  attendanceDayId String
+  studentId String
+  status AttendanceStatus
+  note String?
+  attendanceDay AttendanceDay @relation(fields: [attendanceDayId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id])
+  @@unique([attendanceDayId, studentId])
+}
+
+model SchoolSetting {
+  id String @id @default("default")
+  schoolName String @default("SMP Negeri 1 Contoh")
+  npsn String?
+  academicYear String @default("2025/2026")
+  semester String @default("Ganjil")
+  attendanceOpenTime String @default("06:30")
+  attendanceCloseTime String @default("08:00")
+  autoLock Boolean @default(true)
+}

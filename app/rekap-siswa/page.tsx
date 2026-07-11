@@ -1,0 +1,147 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { Search } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { PageContainer, PageHeading } from "@/components/layout/page-container"
+import { StatusPill } from "@/components/dashboard/status-pill"
+import type { StudentRow } from "@/lib/dashboard-data"
+
+const PAGE_SIZE = 15
+
+export default function RekapSiswaPage() {
+  const [students, setStudents] = useState<StudentRow[]>([])
+  const [cls, setCls] = useState("all")
+  const [query, setQuery] = useState("")
+  const [visible, setVisible] = useState(PAGE_SIZE)
+  useEffect(() => { fetch("/api/recap-students").then((r) => r.json()).then(setStudents) }, [])
+  const classFilterOptions = useMemo(() => [{ value: "all", label: "Semua Kelas" }, ...Array.from(new Set(students.map((s) => s.className))).map((name) => ({ value: name, label: name }))], [students])
+
+  const filtered = useMemo(() => {
+    return students.filter((s) => {
+      const matchCls = cls === "all" || s.className === cls
+      const matchQuery =
+        query.trim() === "" || s.name.toLowerCase().includes(query.toLowerCase())
+      return matchCls && matchQuery
+    })
+  }, [cls, query])
+
+  const shown = filtered.slice(0, visible)
+
+  function resetVisible<T>(fn: (v: T) => void) {
+    return (v: T) => {
+      setVisible(PAGE_SIZE)
+      fn(v)
+    }
+  }
+
+  return (
+    <PageContainer>
+      <PageHeading
+        title="Rekap Siswa"
+        description="Rekap kehadiran per siswa selama 20 hari sekolah terakhir beserta status hari ini."
+      />
+
+      <Card className="border-border/70">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => resetVisible(setQuery)(e.target.value)}
+              placeholder="Cari nama siswa..."
+              className="bg-card pl-9"
+            />
+          </div>
+          <Select value={cls} onValueChange={(value) => value && resetVisible(setCls)(value)}>
+            <SelectTrigger className="w-full bg-card sm:w-44">
+              <SelectValue>
+                {(value: string) =>
+                  classFilterOptions.find((o) => o.value === value)?.label ?? "Pilih kelas"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {classFilterOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="min-w-48">Nama Siswa</TableHead>
+                  <TableHead>Kelas</TableHead>
+                  <TableHead className="text-center">Hadir</TableHead>
+                  <TableHead className="text-center">Sakit</TableHead>
+                  <TableHead className="text-center">Izin</TableHead>
+                  <TableHead className="text-center">Disp.</TableHead>
+                  <TableHead className="text-center">Alfa</TableHead>
+                  <TableHead>Status Hari Ini</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shown.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium text-foreground">{s.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.className}</TableCell>
+                    <TableCell className="text-center font-semibold text-[var(--chart-1)]">
+                      {s.hadir}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground">{s.sakit}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{s.izin}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {s.dispensasi}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground">{s.alfa}</TableCell>
+                    <TableCell>
+                      <StatusPill status={s.todayStatus} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Menampilkan {shown.length} dari {filtered.length} siswa
+        </p>
+        {visible < filtered.length ? (
+          <button
+            onClick={() => setVisible((v) => v + PAGE_SIZE)}
+            className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+          >
+            Muat lebih banyak
+          </button>
+        ) : null}
+      </div>
+    </PageContainer>
+  )
+}
