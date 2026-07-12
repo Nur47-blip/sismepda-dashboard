@@ -34,7 +34,8 @@ export function DashboardHeader({ selectedClass, onClassChange, classes, date, o
             Dashboard
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Ringkasan absensi dan kelengkapan input pada {formatLongDate(date)}
+            Ringkasan absensi dan kelengkapan input pada{" "}
+            <span className="text-base font-bold text-foreground">{formatLongDate(date)}</span>
           </p>
         </div>
       </div>
