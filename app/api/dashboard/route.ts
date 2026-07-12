@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const user = await requireUser()
     const date = parseDateValue(new URL(request.url).searchParams.get("date"))
     const classWhere = user.role === "GURU" ? { homeroomUserId: user.id } : {}
+    const holiday = await prisma.schoolHoliday.findUnique({ where: { date }, select: { id: true, name: true } })
     const rows = await prisma.schoolClass.findMany({
       where: classWhere,
       include: { students: { where: { active: true } }, homeroomUser: { select: { name: true } }, attendanceDays: { where: { date }, include: { attendances: { include: { student: { include: { attendances: { select: { status: true } } } } } } } } }, orderBy: { name: "asc" },
@@ -24,6 +25,6 @@ export async function GET(request: Request) {
     const byDate = new Map<string, { date: Date; hadir: number; total: number }>()
     for (const day of trendDays) { const key = day.date.toISOString().slice(0, 10); const item = byDate.get(key) ?? { date: day.date, hadir: 0, total: 0 }; item.hadir += day.attendances.filter((a) => a.status === "HADIR").length; item.total += day.attendances.length; byDate.set(key, item) }
     const weeklyTrend = [...byDate.values()].slice(0, 6).reverse().map((item) => ({ day: new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(item.date).replace(".", ""), rate: item.total ? Math.round(item.hadir / item.total * 100) : 0 }))
-    return NextResponse.json({ classes, absentStudents, recentActivity, weeklyTrend })
+    return NextResponse.json({ classes, absentStudents, recentActivity, weeklyTrend, holiday })
   } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  CalendarDays,
+  CalendarOff,
   CheckCheck,
   ClipboardCheck,
   ClipboardList,
@@ -55,6 +55,7 @@ export default function AbsensiInputPage() {
   const [dateReady, setDateReady] = useState(false)
   const [selectedClass, setSelectedClass] = useState("")
   const [classes, setClasses] = useState<ApiClass[]>([])
+  const [holiday, setHoliday] = useState<{ id: string; name: string } | null>(null)
   const [statuses, setStatuses] = useState<Record<string, InputStatus>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [dirty, setDirty] = useState(false)
@@ -76,7 +77,7 @@ export default function AbsensiInputPage() {
     setDateReady(true)
   }, [])
   const dateLabel = formatLongDate(date)
-  useEffect(() => { if (!dateReady) return; fetch(`/api/attendance?date=${date}`).then((r) => r.json()).then((data) => { setClasses(data); setSelectedClass(""); setStatuses({}); setNotes({}); setHasSaved(false); setLastSaved(null) }).catch(() => toast.error("Gagal memuat kelas")) }, [date, dateReady])
+  useEffect(() => { if (!dateReady) return; fetch(`/api/attendance?date=${date}`).then((r) => r.json()).then((data) => { setClasses(data.classes); setHoliday(data.holiday); setSelectedClass(""); setStatuses({}); setNotes({}); setHasSaved(false); setLastSaved(null) }).catch(() => toast.error("Gagal memuat kelas")) }, [date, dateReady])
   const selected = classes.find((c) => c.id === selectedClass)
   const classOption = selected ? { id: selected.id, name: selected.name, total: selected.students.length, homeroom: selected.homeroomUser?.name ?? "Admin", submitted: selected.attendanceDays.length > 0, submittedAt: selected.attendanceDays[0]?.submittedAt ?? null } : undefined
   const roster = useMemo(() => (selected?.students ?? []).map((s, i) => ({ ...s, no: i + 1 })), [selected])
@@ -214,12 +215,14 @@ export default function AbsensiInputPage() {
         }
       />
 
+      {holiday ? <Card className="border-primary/30 bg-primary/5"><CardContent className="flex items-center gap-3 py-5"><span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarOff className="size-5" /></span><div><p className="font-semibold">Hari libur: {holiday.name}</p><p className="text-sm text-muted-foreground">Input absensi dinonaktifkan untuk tanggal ini.</p></div></CardContent></Card> : null}
+
       {/* Pemilihan kelas */}
       <Card className="border-border/60 shadow-sm">
         <CardContent className="flex flex-col gap-4 py-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="w-full space-y-1.5 sm:max-w-xs">
             <Label htmlFor="pilih-kelas">Pilih Kelas</Label>
-            <Select value={selectedClass} onValueChange={(value) => value && handleClassChange(value)}>
+            <Select value={selectedClass} disabled={Boolean(holiday)} onValueChange={(value) => value && handleClassChange(value)}>
               <SelectTrigger id="pilih-kelas" className="w-full bg-card shadow-sm">
                 <SelectValue placeholder="Pilih kelas...">
                   {(value: string) => classes.find((c) => c.id === value)?.name ?? "Pilih kelas..."}

@@ -30,11 +30,12 @@ const PAGE_SIZE = 15
 export default function RekapSiswaPage() {
   const [students, setStudents] = useState<StudentRow[]>([])
   const [classes, setClasses] = useState<string[]>([])
+  const [holiday, setHoliday] = useState<{ id: string; name: string } | null>(null)
   const [date, setDate] = useState(localDateValue())
   const [cls, setCls] = useState("all")
   const [query, setQuery] = useState("")
   const [visible, setVisible] = useState(PAGE_SIZE)
-  useEffect(() => { fetch(`/api/recap-students?date=${date}`).then((r) => r.json()).then((data) => { setStudents(data.students); setClasses(data.classes) }) }, [date])
+  useEffect(() => { fetch(`/api/recap-students?date=${date}`).then((r) => r.json()).then((data) => { setStudents(data.students); setClasses(data.classes); setHoliday(data.holiday) }) }, [date])
   const classFilterOptions = useMemo(() => [{ value: "all", label: "Semua Kelas" }, ...classes.map((name) => ({ value: name, label: name }))], [classes])
 
   const filtered = useMemo(() => {
@@ -124,7 +125,7 @@ export default function RekapSiswaPage() {
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground">{s.alfa}</TableCell>
                     <TableCell>
-                      {s.todayStatus ? <StatusPill status={s.todayStatus} /> : <span className="text-sm text-muted-foreground">Belum diinput</span>}
+                      {holiday ? <span className="text-sm font-medium text-primary">Libur</span> : s.todayStatus ? <StatusPill status={s.todayStatus} /> : <span className="text-sm text-muted-foreground">Belum diinput</span>}
                     </TableCell>
                   </TableRow>
                 ))}

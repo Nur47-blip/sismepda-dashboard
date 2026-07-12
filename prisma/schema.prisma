@@ -88,3 +88,10 @@ model SchoolSetting {
   attendanceCloseTime String @default("08:00")
   autoLock Boolean @default(true)
 }
+
+model SchoolHoliday {
+  id String @id @default(cuid())
+  date DateTime @unique
+  name String
+  createdAt DateTime @default(now())
+}

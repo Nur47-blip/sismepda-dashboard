@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertCircle, RefreshCw } from "lucide-react"
+import { AlertCircle, CalendarOff, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { SummaryCards } from "@/components/dashboard/summary-cards"
 import {
@@ -35,7 +36,8 @@ export default function DashboardPage() {
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [weeklyTrend, setWeeklyTrend] = useState<WeeklyTrendPoint[]>([])
-  useEffect(() => { setLoading(true); setError(false); fetch(`/api/dashboard?date=${date}`).then((response) => { if (!response.ok) throw new Error(); return response.json() }).then((data) => { setClasses(data.classes); setAbsentStudents(data.absentStudents); setRecentActivity(data.recentActivity); setWeeklyTrend(data.weeklyTrend); setLoading(false) }).catch(() => { setError(true); setLoading(false) }) }, [date])
+  const [holiday, setHoliday] = useState<{ id: string; name: string } | null>(null)
+  useEffect(() => { setLoading(true); setError(false); fetch(`/api/dashboard?date=${date}`).then((response) => { if (!response.ok) throw new Error(); return response.json() }).then((data) => { setClasses(data.classes); setAbsentStudents(data.absentStudents); setRecentActivity(data.recentActivity); setWeeklyTrend(data.weeklyTrend); setHoliday(data.holiday); setLoading(false) }).catch(() => { setError(true); setLoading(false) }) }, [date])
 
   const records = useMemo(
     () => (selectedClass === "all" ? classes : classes.filter((c) => c.id === selectedClass)),
@@ -57,6 +59,8 @@ export default function DashboardPage() {
             <ErrorState />
           ) : loading ? (
             <DashboardSkeleton />
+          ) : holiday ? (
+            <Card className="border-primary/30 bg-primary/5"><CardContent className="flex flex-col items-center gap-3 py-14 text-center"><span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><CalendarOff className="size-7" /></span><div><h2 className="text-lg font-semibold">Hari Libur</h2><p className="text-sm text-muted-foreground">{holiday.name}. Tidak ada kewajiban input absensi pada tanggal ini.</p></div></CardContent></Card>
           ) : (
             <div className="space-y-6">
               <SummaryCards

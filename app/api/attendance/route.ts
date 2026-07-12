@@ -7,12 +7,14 @@ import { sortClasses } from "@/lib/class-order"
 export async function GET(request: Request) {
   try {
     const user = await requireUser()
+    const date = parseDateValue(new URL(request.url).searchParams.get("date"))
     const classes = await prisma.schoolClass.findMany({
       where: user.role === "GURU" ? { homeroomUserId: user.id } : {},
-      include: { students: { where: { active: true }, orderBy: { name: "asc" } }, homeroomUser: { select: { name: true } }, attendanceDays: { where: { date: parseDateValue(new URL(request.url).searchParams.get("date")) }, include: { attendances: true } } },
+      include: { students: { where: { active: true }, orderBy: { name: "asc" } }, homeroomUser: { select: { name: true } }, attendanceDays: { where: { date }, include: { attendances: true } } },
       orderBy: { name: "asc" },
     })
-    return NextResponse.json(sortClasses(classes))
+    const holiday = await prisma.schoolHoliday.findUnique({ where: { date }, select: { id: true, name: true } })
+    return NextResponse.json({ classes: sortClasses(classes), holiday })
   } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
 }
 
@@ -25,6 +27,8 @@ export async function POST(request: Request) {
     if (body.records.some((r) => !["HADIR","SAKIT","IZIN","ALFA","DISPENSASI"].includes(r.status))) return NextResponse.json({ error: "Semua status wajib diisi" }, { status: 400 })
     const date = parseDateValue(body.date)
     if (date > startOfToday()) return NextResponse.json({ error: "Tanggal absensi tidak boleh di masa depan" }, { status: 400 })
+    const holiday = await prisma.schoolHoliday.findUnique({ where: { date }, select: { name: true } })
+    if (holiday) return NextResponse.json({ error: `Tanggal ini ditandai sebagai hari libur: ${holiday.name}` }, { status: 400 })
     await prisma.$transaction(async (tx) => {
       const day = await tx.attendanceDay.upsert({ where: { classId_date: { classId: body.classId, date } }, update: { submittedById: user.id, submittedAt: new Date() }, create: { classId: body.classId, date, submittedById: user.id } })
       for (const r of body.records) await tx.attendance.upsert({ where: { attendanceDayId_studentId: { attendanceDayId: day.id, studentId: r.studentId } }, update: { status: r.status as never, note: r.note }, create: { attendanceDayId: day.id, studentId: r.studentId, status: r.status as never, note: r.note } })

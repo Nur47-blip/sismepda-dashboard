@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { PageContainer, PageHeading } from "@/components/layout/page-container"
+import { HolidayManager } from "@/components/settings/holiday-manager"
 
 export default function PengaturanPage() {
   const [notifReminder, setNotifReminder] = useState(true)
@@ -58,6 +59,8 @@ export default function PengaturanPage() {
           </div>
         </CardContent>
       </Card>
+
+      <HolidayManager />
 
       <Card>
         <CardHeader>

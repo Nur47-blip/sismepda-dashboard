@@ -24,10 +24,11 @@ const gradeOptions = [
 
 export default function RekapKelasPage() {
   const [classes, setClasses] = useState<ClassRecord[]>([])
+  const [holiday, setHoliday] = useState<{ id: string; name: string } | null>(null)
   const [date, setDate] = useState(localDateValue())
   const [grade, setGrade] = useState("all")
   const [query, setQuery] = useState("")
-  useEffect(() => { fetch(`/api/dashboard?date=${date}`).then((r) => r.json()).then((data) => setClasses(data.classes)) }, [date])
+  useEffect(() => { fetch(`/api/dashboard?date=${date}`).then((r) => r.json()).then((data) => { setClasses(data.classes); setHoliday(data.holiday) }) }, [date])
 
   const filtered = useMemo(() => {
     return classes.filter((c) => {
@@ -38,7 +39,9 @@ export default function RekapKelasPage() {
         c.homeroom.toLowerCase().includes(query.toLowerCase())
       return matchGrade && matchQuery
     })
-  }, [grade, query])
+  }, [classes, grade, query])
+
+  if (holiday) return <PageContainer><PageHeading title="Rekap Kelas" description={`Rincian kehadiran dan status input absensi pada ${formatLongDate(date)}.`} action={<DateFilter value={date} onChange={setDate} ariaLabel="Tanggal rekap kelas" />} /><Card className="border-primary/30 bg-primary/5"><CardContent className="py-12 text-center"><p className="text-lg font-semibold">Hari Libur</p><p className="text-sm text-muted-foreground">{holiday.name}. Tidak ada kewajiban input absensi pada tanggal ini.</p></CardContent></Card></PageContainer>
 
   return (
     <PageContainer>

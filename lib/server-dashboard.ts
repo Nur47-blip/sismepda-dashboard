@@ -59,3 +59,7 @@ export async function getAbsenceRanking(): Promise<AbsenceRankingRow[]> {
     }
   })
 }
+
+export async function getHoliday(date: Date) {
+  return prisma.schoolHoliday.findUnique({ where: { date }, select: { id: true, name: true } })
+}
