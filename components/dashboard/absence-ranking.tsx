@@ -86,8 +86,7 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
           s.className.toLowerCase().includes(q),
       )
       .map((s) => ({ student: s, total: activeKeys.reduce((sum, k) => sum + s[k], 0) }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, activeKeys.join(",")])
+  }, [students, query, active.sakit, active.izin, active.alfa, active.dispensasi])
 
   const sorted = useMemo(() => {
     const rows = [...filtered]

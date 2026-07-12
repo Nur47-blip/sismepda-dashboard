@@ -45,7 +45,7 @@ export default function RekapSiswaPage() {
         query.trim() === "" || s.name.toLowerCase().includes(query.toLowerCase())
       return matchCls && matchQuery
     })
-  }, [cls, query])
+  }, [students, cls, query])
 
   const shown = filtered.slice(0, visible)
 

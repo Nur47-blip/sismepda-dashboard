@@ -41,7 +41,7 @@ export default function DashboardPage() {
 
   const records = useMemo(
     () => (selectedClass === "all" ? classes : classes.filter((c) => c.id === selectedClass)),
-    [selectedClass],
+    [classes, selectedClass],
   )
   const summary = useMemo(() => computeSummary(records), [records])
 
@@ -49,7 +49,7 @@ export default function DashboardPage() {
     if (selectedClass === "all") return absentStudents
     const name = classes.find((c) => c.id === selectedClass)?.name
     return absentStudents.filter((s) => s.className === name)
-  }, [selectedClass])
+  }, [absentStudents, classes, selectedClass])
 
   return (
     <PageContainer>
