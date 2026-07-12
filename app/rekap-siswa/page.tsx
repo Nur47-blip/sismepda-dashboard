@@ -29,12 +29,13 @@ const PAGE_SIZE = 15
 
 export default function RekapSiswaPage() {
   const [students, setStudents] = useState<StudentRow[]>([])
+  const [classes, setClasses] = useState<string[]>([])
   const [date, setDate] = useState(localDateValue())
   const [cls, setCls] = useState("all")
   const [query, setQuery] = useState("")
   const [visible, setVisible] = useState(PAGE_SIZE)
-  useEffect(() => { fetch(`/api/recap-students?date=${date}`).then((r) => r.json()).then(setStudents) }, [date])
-  const classFilterOptions = useMemo(() => [{ value: "all", label: "Semua Kelas" }, ...Array.from(new Set(students.map((s) => s.className))).map((name) => ({ value: name, label: name }))], [students])
+  useEffect(() => { fetch(`/api/recap-students?date=${date}`).then((r) => r.json()).then((data) => { setStudents(data.students); setClasses(data.classes) }) }, [date])
+  const classFilterOptions = useMemo(() => [{ value: "all", label: "Semua Kelas" }, ...classes.map((name) => ({ value: name, label: name }))], [classes])
 
   const filtered = useMemo(() => {
     return students.filter((s) => {

@@ -5,7 +5,9 @@ import { PrismaClient, Role } from "../app/generated/prisma/client"
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL belum dikonfigurasi")
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) })
-const classNames = ["VII A","VII B","VII C","VII D","VIII A","VIII B","VIII C","VIII D","IX A","IX B","IX C","IX D"]
+const classNames = ["VII", "VIII", "IX"].flatMap((grade) =>
+  ["A", "B", "C", "D", "E", "F", "G", "H", "I"].map((section) => `${grade} ${section}`),
+)
 
 async function main() {
   await prisma.user.upsert({
