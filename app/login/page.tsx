@@ -1,58 +1,65 @@
-"use client"
+"use client";
 
-import { useRef, useState } from "react"
-import { useRouter } from "next/navigation"
-import { GraduationCap, Eye, EyeOff, Loader2, LogIn, CircleAlert } from "lucide-react"
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  GraduationCap,
+  Eye,
+  EyeOff,
+  Loader2,
+  LogIn,
+  CircleAlert,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
-import { signIn } from "next-auth/react"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { signIn } from "next-auth/react";
 
 // Kredensial demo (mock) — pengganti backend autentikasi.
-const DEMO_EMAIL = "admin@sismepda.sch.id"
-const DEMO_PASSWORD = "admin123"
+const DEMO_EMAIL = "admin@sismepda.sch.id";
+const DEMO_PASSWORD = "admin123";
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [remember, setRemember] = useState(true)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
 
-  const [touched, setTouched] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [touched, setTouched] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const emailRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const emailError =
-    touched && !email.trim()
-      ? "Email atau NIP wajib diisi"
-      : undefined
+    touched && !email.trim() ? "Email atau NIP wajib diisi" : undefined;
   const passwordError =
-    touched && !password ? "Password wajib diisi" : undefined
+    touched && !password ? "Password wajib diisi" : undefined;
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setTouched(true)
-    setAuthError(null)
+    e.preventDefault();
+    setTouched(true);
+    setAuthError(null);
 
-    if (!email.trim() || !password) return
+    if (!email.trim() || !password) return;
 
-    setLoading(true)
+    setLoading(true);
     const result = await signIn("credentials", {
-      identifier: email.trim(), password, redirect: false,
-    })
+      identifier: email.trim(),
+      password,
+      redirect: false,
+    });
     if (result?.error) {
-      setLoading(false)
-      setAuthError("Email/NIP atau password salah. Silakan coba lagi.")
-      return
+      setLoading(false);
+      setAuthError("Email/NIP atau password salah. Silakan coba lagi.");
+      return;
     }
-    router.push("/")
-    router.refresh()
+    router.push("/");
+    router.refresh();
   }
 
   return (
@@ -68,7 +75,8 @@ export default function LoginPage() {
               Masuk ke SISMEPDA
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground text-pretty">
-              Sistem Absensi Sekolah. Masuk untuk mengelola kehadiran dan data sekolah.
+              Sistem Absensi Sekolah. Masuk untuk mengelola kehadiran dan data
+              sekolah.
             </p>
           </div>
 
@@ -135,10 +143,18 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    aria-label={
+                      showPassword
+                        ? "Sembunyikan password"
+                        : "Tampilkan password"
+                    }
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
                   </button>
                 </div>
                 {passwordError ? (
@@ -157,7 +173,12 @@ export default function LoginPage() {
                 Ingat saya di perangkat ini
               </label>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={loading}
+              >
                 {loading ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -168,22 +189,29 @@ export default function LoginPage() {
             </form>
 
             {/* Petunjuk kredensial demo */}
-            <div className="mt-5 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
+            {/* <div className="mt-5 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">Akun demo</p>
               <p className="mt-0.5">
-                Email: <span className="font-medium text-foreground">{DEMO_EMAIL}</span>
+                Email:{" "}
+                <span className="font-medium text-foreground">
+                  {DEMO_EMAIL}
+                </span>
               </p>
               <p>
-                Password: <span className="font-medium text-foreground">{DEMO_PASSWORD}</span>
+                Password:{" "}
+                <span className="font-medium text-foreground">
+                  {DEMO_PASSWORD}
+                </span>
               </p>
-            </div>
+            </div> */}
           </div>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} SISMEPDA. Sistem Manajemen Presensi Peserta Didik &amp; Aparatur.
+            &copy; {new Date().getFullYear()} SISMEPDA. Sistem Manajemen SMPN 2
+            Blitar.
           </p>
         </div>
       </div>
     </main>
-  )
+  );
 }
