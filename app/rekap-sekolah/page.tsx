@@ -8,13 +8,17 @@ import {
   statusMeta,
   type AttendanceStatus,
 } from "@/lib/dashboard-data"
-import { getAbsenceRanking, getTodayClassRecords } from "@/lib/server-dashboard"
+import { getAbsenceRanking, getClassRecords } from "@/lib/server-dashboard"
+import { UrlDateFilter } from "@/components/url-date-filter"
+import { formatLongDate, localDateValue, parseDateValue } from "@/lib/date"
 
 const statusOrder: AttendanceStatus[] = ["hadir", "sakit", "izin", "dispensasi", "alfa"]
 
-export default async function RekapSekolahPage() {
+export default async function RekapSekolahPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+  const requestedDate = (await searchParams).date
+  const date = localDateValue(parseDateValue(requestedDate))
   const [classes, absenceRanking] = await Promise.all([
-    getTodayClassRecords(),
+    getClassRecords(parseDateValue(date)),
     getAbsenceRanking(),
   ])
   const summary = computeSummary(classes)
@@ -30,7 +34,7 @@ export default async function RekapSekolahPage() {
       tone: "bg-[var(--chart-2)]/12 text-[var(--chart-2)]",
     },
     {
-      label: "Hadir Hari Ini",
+      label: "Hadir",
       value: summary.totalHadir.toLocaleString("id-ID"),
       icon: UserCheck,
       tone: "bg-[var(--chart-1)]/12 text-[var(--chart-1)]",
@@ -62,7 +66,8 @@ export default async function RekapSekolahPage() {
     <PageContainer>
       <PageHeading
         title="Rekap Sekolah"
-        description="Ringkasan kehadiran seluruh siswa se-sekolah dan perbandingan antar tingkat."
+        description={`Ringkasan kehadiran seluruh siswa pada ${formatLongDate(date)}.`}
+        action={<UrlDateFilter value={date} ariaLabel="Tanggal rekap sekolah" />}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

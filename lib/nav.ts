@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   UserPlus,
+  UserCog,
   UserRoundPlus,
   UserRoundCog,
   Building2,
@@ -39,6 +40,13 @@ export const navItems: NavItem[] = [
     href: "/siswa/input",
     icon: UserPlus,
     description: "Tambahkan data siswa baru",
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Kelola Siswa",
+    href: "/siswa/kelola",
+    icon: UserCog,
+    description: "Edit kelas dan status siswa",
     roles: ["ADMIN"],
   },
   {

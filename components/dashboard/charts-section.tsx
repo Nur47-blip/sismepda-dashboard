@@ -51,7 +51,7 @@ export function AttendanceCard({ summary }: { summary: ChartsSummary }) {
     <Card className="border-border/60 shadow-sm">
       <CardHeader>
         <CardTitle className="text-base">Kehadiran Siswa</CardTitle>
-        <CardDescription>Rincian status kehadiran hari ini</CardDescription>
+        <CardDescription>Rincian status kehadiran pada tanggal dipilih</CardDescription>
       </CardHeader>
       <CardContent>
         <DonutChart

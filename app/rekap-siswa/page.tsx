@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PageContainer, PageHeading } from "@/components/layout/page-container"
+import { DateFilter } from "@/components/date-filter"
+import { formatLongDate, localDateValue } from "@/lib/date"
 import { StatusPill } from "@/components/dashboard/status-pill"
 import type { StudentRow } from "@/lib/dashboard-data"
 
@@ -27,10 +29,11 @@ const PAGE_SIZE = 15
 
 export default function RekapSiswaPage() {
   const [students, setStudents] = useState<StudentRow[]>([])
+  const [date, setDate] = useState(localDateValue())
   const [cls, setCls] = useState("all")
   const [query, setQuery] = useState("")
   const [visible, setVisible] = useState(PAGE_SIZE)
-  useEffect(() => { fetch("/api/recap-students").then((r) => r.json()).then(setStudents) }, [])
+  useEffect(() => { fetch(`/api/recap-students?date=${date}`).then((r) => r.json()).then(setStudents) }, [date])
   const classFilterOptions = useMemo(() => [{ value: "all", label: "Semua Kelas" }, ...Array.from(new Set(students.map((s) => s.className))).map((name) => ({ value: name, label: name }))], [students])
 
   const filtered = useMemo(() => {
@@ -55,7 +58,8 @@ export default function RekapSiswaPage() {
     <PageContainer>
       <PageHeading
         title="Rekap Siswa"
-        description="Rekap kehadiran per siswa selama 20 hari sekolah terakhir beserta status hari ini."
+        description={`Rekap kehadiran kumulatif beserta status pada ${formatLongDate(date)}.`}
+        action={<DateFilter value={date} onChange={setDate} ariaLabel="Tanggal status siswa" />}
       />
 
       <Card className="border-border/70">
@@ -101,7 +105,7 @@ export default function RekapSiswaPage() {
                   <TableHead className="text-center">Izin</TableHead>
                   <TableHead className="text-center">Disp.</TableHead>
                   <TableHead className="text-center">Alfa</TableHead>
-                  <TableHead>Status Hari Ini</TableHead>
+                  <TableHead>Status Tanggal Dipilih</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

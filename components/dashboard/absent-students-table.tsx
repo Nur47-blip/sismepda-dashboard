@@ -138,7 +138,7 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-base">
               <UserX className="size-4 text-[var(--chart-5)]" />
-              Siswa Tidak Hadir Hari Ini
+              Siswa Tidak Hadir pada Tanggal Dipilih
             </CardTitle>
             <CardDescription>
               Daftar siswa dengan status sakit, izin, dispensasi, atau alfa

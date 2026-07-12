@@ -18,6 +18,7 @@ import { ClassProgress } from "@/components/dashboard/class-progress"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
 import { PageContainer } from "@/components/layout/page-container"
+import { localDateValue } from "@/lib/date"
 import {
   computeSummary,
   type ClassRecord,
@@ -28,12 +29,13 @@ import {
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [date, setDate] = useState(localDateValue())
   const [selectedClass, setSelectedClass] = useState("all")
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [weeklyTrend, setWeeklyTrend] = useState<WeeklyTrendPoint[]>([])
-  useEffect(() => { fetch("/api/dashboard").then((response) => { if (!response.ok) throw new Error(); return response.json() }).then((data) => { setClasses(data.classes); setAbsentStudents(data.absentStudents); setRecentActivity(data.recentActivity); setWeeklyTrend(data.weeklyTrend); setLoading(false) }).catch(() => { setError(true); setLoading(false) }) }, [])
+  useEffect(() => { setLoading(true); setError(false); fetch(`/api/dashboard?date=${date}`).then((response) => { if (!response.ok) throw new Error(); return response.json() }).then((data) => { setClasses(data.classes); setAbsentStudents(data.absentStudents); setRecentActivity(data.recentActivity); setWeeklyTrend(data.weeklyTrend); setLoading(false) }).catch(() => { setError(true); setLoading(false) }) }, [date])
 
   const records = useMemo(
     () => (selectedClass === "all" ? classes : classes.filter((c) => c.id === selectedClass)),
@@ -49,7 +51,7 @@ export default function DashboardPage() {
 
   return (
     <PageContainer>
-      <DashboardHeader selectedClass={selectedClass} onClassChange={setSelectedClass} classes={classes} />
+      <DashboardHeader selectedClass={selectedClass} onClassChange={setSelectedClass} classes={classes} date={date} onDateChange={setDate} />
 
           {error ? (
             <ErrorState />

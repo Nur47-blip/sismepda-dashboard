@@ -15,7 +15,7 @@ export function ClassesNotInput({ records }: { records: ClassRecord[] }) {
               <AlertTriangle className="size-4 text-[var(--chart-5)]" />
               Kelas Belum Input
             </CardTitle>
-            <CardDescription>Kelas yang belum mengisi absensi hari ini</CardDescription>
+            <CardDescription>Kelas yang belum mengisi absensi pada tanggal dipilih</CardDescription>
           </div>
           {pending.length > 0 && (
             <span className="rounded-full bg-[var(--chart-5)]/12 px-2.5 py-1 text-sm font-semibold text-[var(--chart-5)] tabular-nums">

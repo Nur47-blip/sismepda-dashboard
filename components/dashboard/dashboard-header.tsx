@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarDays, Plus, GraduationCap } from "lucide-react"
+import { Plus, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import {
@@ -10,21 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { DateFilter } from "@/components/date-filter"
+import { formatLongDate } from "@/lib/date"
 
 type DashboardHeaderProps = {
   selectedClass: string
   onClassChange: (value: string) => void
   classes: Array<{ id: string; name: string }>
+  date: string
+  onDateChange: (value: string) => void
 }
 
-const todayLabel = new Intl.DateTimeFormat("id-ID", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-}).format(new Date())
-
-export function DashboardHeader({ selectedClass, onClassChange, classes }: DashboardHeaderProps) {
+export function DashboardHeader({ selectedClass, onClassChange, classes, date, onDateChange }: DashboardHeaderProps) {
   const classOptions = [{ value: "all", label: "Semua Kelas" }, ...classes.map((c) => ({ value: c.id, label: c.name }))]
   return (
     <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -37,16 +34,13 @@ export function DashboardHeader({ selectedClass, onClassChange, classes }: Dashb
             Dashboard
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Ringkasan absensi dan kelengkapan input hari ini
+            Ringkasan absensi dan kelengkapan input pada {formatLongDate(date)}
           </p>
         </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-sm">
-          <CalendarDays className="size-4 text-primary" />
-          <span className="whitespace-nowrap">{todayLabel}</span>
-        </div>
+        <DateFilter value={date} onChange={onDateChange} ariaLabel="Tanggal dashboard" />
 
         <Select value={selectedClass} onValueChange={(value) => value && onClassChange(value)}>
           <SelectTrigger className="w-full bg-card shadow-sm sm:w-44">
@@ -65,7 +59,7 @@ export function DashboardHeader({ selectedClass, onClassChange, classes }: Dashb
           </SelectContent>
         </Select>
 
-        <Button className="shadow-sm" render={<Link href="/absensi/input" />}>
+        <Button className="shadow-sm" render={<Link href={`/absensi/input?date=${date}`} />}>
           <Plus className="size-4" />
           Input Absensi
         </Button>

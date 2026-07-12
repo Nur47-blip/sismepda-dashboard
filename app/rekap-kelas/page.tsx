@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { PageContainer, PageHeading } from "@/components/layout/page-container"
+import { DateFilter } from "@/components/date-filter"
+import { formatLongDate, localDateValue } from "@/lib/date"
 import { StatusPill } from "@/components/dashboard/status-pill"
 import { grades_list, type ClassRecord } from "@/lib/dashboard-data"
 
@@ -22,9 +24,10 @@ const gradeOptions = [
 
 export default function RekapKelasPage() {
   const [classes, setClasses] = useState<ClassRecord[]>([])
+  const [date, setDate] = useState(localDateValue())
   const [grade, setGrade] = useState("all")
   const [query, setQuery] = useState("")
-  useEffect(() => { fetch("/api/dashboard").then((r) => r.json()).then((data) => setClasses(data.classes)) }, [])
+  useEffect(() => { fetch(`/api/dashboard?date=${date}`).then((r) => r.json()).then((data) => setClasses(data.classes)) }, [date])
 
   const filtered = useMemo(() => {
     return classes.filter((c) => {
@@ -41,7 +44,8 @@ export default function RekapKelasPage() {
     <PageContainer>
       <PageHeading
         title="Rekap Kelas"
-        description="Rincian kehadiran dan status input absensi untuk setiap kelas."
+        description={`Rincian kehadiran dan status input absensi pada ${formatLongDate(date)}.`}
+        action={<DateFilter value={date} onChange={setDate} ariaLabel="Tanggal rekap kelas" />}
       />
 
       <Card className="border-border/70">
@@ -114,7 +118,7 @@ export default function RekapKelasPage() {
                 </>
               ) : (
                 <p className="rounded-lg bg-secondary/60 px-3 py-6 text-center text-sm text-muted-foreground">
-                  {`${c.totalStudents} siswa`} &middot; absensi belum diinput hari ini
+                  {`${c.totalStudents} siswa`} &middot; absensi belum diinput pada tanggal ini
                 </p>
               )}
             </CardContent>

@@ -10,10 +10,43 @@ export async function GET() {
     await requireAdmin()
     const [classes, students] = await Promise.all([
       prisma.schoolClass.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
-      prisma.student.findMany({ select: { nisn: true, name: true } }),
+      prisma.student.findMany({ select: { id: true, nisn: true, name: true, active: true, schoolClass: { select: { name: true } } }, orderBy: [{ active: "desc" }, { name: "asc" }] }),
     ])
-    return NextResponse.json({ classes: classes.map((item) => item.name), students })
+    return NextResponse.json({ classes: classes.map((item) => item.name), students: students.map(({ schoolClass, ...item }) => ({ ...item, className: schoolClass.name })) })
   } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
+}
+
+const studentUpdate = z.object({
+  id: z.string().min(1),
+  nisn: z.string().regex(/^\d{10}$/).optional(),
+  name: z.string().trim().min(1).optional(),
+  className: z.string().min(1).optional(),
+  active: z.boolean().optional(),
+})
+
+export async function PATCH(request: Request) {
+  try {
+    await requireAdmin()
+    const body = studentUpdate.parse(await request.json())
+    const schoolClass = body.className
+      ? await prisma.schoolClass.findUnique({ where: { name: body.className }, select: { id: true } })
+      : null
+    if (body.className && !schoolClass) return NextResponse.json({ error: "Kelas tidak ditemukan" }, { status: 400 })
+    const updated = await prisma.student.update({
+      where: { id: body.id },
+      data: {
+        ...(body.nisn !== undefined ? { nisn: body.nisn } : {}),
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(schoolClass ? { classId: schoolClass.id } : {}),
+        ...(body.active !== undefined ? { active: body.active } : {}),
+      },
+      include: { schoolClass: { select: { name: true } } },
+    })
+    return NextResponse.json({ id: updated.id, nisn: updated.nisn, name: updated.name, active: updated.active, className: updated.schoolClass.name })
+  } catch (error) {
+    const duplicate = typeof error === "object" && error && "code" in error && error.code === "P2002"
+    return NextResponse.json({ error: duplicate ? "NISN sudah digunakan siswa lain" : "Data siswa tidak valid" }, { status: duplicate ? 409 : 400 })
+  }
 }
 
 export async function POST(request: Request) {

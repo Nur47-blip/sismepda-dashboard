@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { PageContainer, PageHeading } from "@/components/layout/page-container"
+import { DateFilter } from "@/components/date-filter"
 import { AttendanceEditor } from "@/components/absensi/attendance-editor"
 import { StatusSummary } from "@/components/absensi/status-summary"
 import {
@@ -41,21 +42,17 @@ import {
   formatJam,
   type InputStatus,
 } from "@/lib/attendance-input"
+import { formatLongDate, localDateValue, parseDateValue } from "@/lib/date"
 
 type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; name: string }>; attendanceDays: Array<{ submittedAt: string; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
-
-const todayLabel = new Intl.DateTimeFormat("id-ID", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-}).format(new Date())
 
 function emptyCounts(): Record<InputStatus, number> {
   return { belum: 0, hadir: 0, sakit: 0, izin: 0, alfa: 0, dispensasi: 0 }
 }
 
 export default function AbsensiInputPage() {
+  const [date, setDate] = useState(localDateValue())
+  const [dateReady, setDateReady] = useState(false)
   const [selectedClass, setSelectedClass] = useState("")
   const [classes, setClasses] = useState<ApiClass[]>([])
   const [statuses, setStatuses] = useState<Record<string, InputStatus>>({})
@@ -73,7 +70,13 @@ export default function AbsensiInputPage() {
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
 
-  useEffect(() => { fetch("/api/attendance").then((r) => r.json()).then(setClasses).catch(() => toast.error("Gagal memuat kelas")) }, [])
+  useEffect(() => {
+    const requestedDate = new URLSearchParams(window.location.search).get("date")
+    if (requestedDate) setDate(localDateValue(parseDateValue(requestedDate)))
+    setDateReady(true)
+  }, [])
+  const dateLabel = formatLongDate(date)
+  useEffect(() => { if (!dateReady) return; fetch(`/api/attendance?date=${date}`).then((r) => r.json()).then((data) => { setClasses(data); setSelectedClass(""); setStatuses({}); setNotes({}); setHasSaved(false); setLastSaved(null) }).catch(() => toast.error("Gagal memuat kelas")) }, [date, dateReady])
   const selected = classes.find((c) => c.id === selectedClass)
   const classOption = selected ? { id: selected.id, name: selected.name, total: selected.students.length, homeroom: selected.homeroomUser?.name ?? "Admin", submitted: selected.attendanceDays.length > 0, submittedAt: selected.attendanceDays[0]?.submittedAt ?? null } : undefined
   const roster = useMemo(() => (selected?.students ?? []).map((s, i) => ({ ...s, no: i + 1 })), [selected])
@@ -175,7 +178,7 @@ export default function AbsensiInputPage() {
   const doSave = useCallback(async () => {
     setSaving(true)
     try {
-      const response = await fetch("/api/attendance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classId: selectedClass, records: roster.map((s) => ({ studentId: s.id, status: (statuses[s.id] ?? "belum").toUpperCase(), note: notes[s.id] })) }) })
+      const response = await fetch("/api/attendance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classId: selectedClass, date, records: roster.map((s) => ({ studentId: s.id, status: (statuses[s.id] ?? "belum").toUpperCase(), note: notes[s.id] })) }) })
       if (!response.ok) throw new Error()
       const time = currentJam()
       setSaving(false)
@@ -189,7 +192,7 @@ export default function AbsensiInputPage() {
         description: `${classOption?.name ?? ""} • pukul ${time}`,
       })
     } catch { setSaving(false); toast.error("Absensi gagal disimpan") }
-  }, [classOption, selectedClass, roster, statuses, notes])
+  }, [classOption, selectedClass, date, roster, statuses, notes])
 
   const confirmLeave = useCallback(() => {
     setUnsavedOpen(false)
@@ -205,12 +208,9 @@ export default function AbsensiInputPage() {
     <PageContainer>
       <PageHeading
         title="Input Absensi"
-        description="Catat kehadiran siswa pada hari ini"
+        description={`Catat kehadiran siswa untuk ${dateLabel}`}
         action={
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-sm">
-            <CalendarDays className="size-4 text-primary" />
-            <span className="whitespace-nowrap">{todayLabel}</span>
-          </div>
+          <DateFilter value={date} onChange={(value) => { if (dirty) { toast.error("Simpan atau batalkan perubahan sebelum mengganti tanggal"); return } setDate(value) }} ariaLabel="Tanggal absensi" />
         }
       />
 
@@ -246,7 +246,7 @@ export default function AbsensiInputPage() {
                   Terakhir disimpan pukul {lastSaved.time} oleh {lastSaved.by}
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground">Belum pernah disimpan hari ini</span>
+                <span className="text-xs text-muted-foreground">Belum pernah disimpan pada tanggal ini</span>
               )}
             </div>
           ) : null}
@@ -402,7 +402,7 @@ export default function AbsensiInputPage() {
                 <dt className="text-muted-foreground">Kelas</dt>
                 <dd className="font-medium text-foreground">{classOption?.name}</dd>
                 <dt className="text-muted-foreground">Tanggal</dt>
-                <dd className="font-medium text-foreground">{todayLabel}</dd>
+                <dd className="font-medium text-foreground">{dateLabel}</dd>
                 <dt className="text-muted-foreground">Jumlah siswa</dt>
                 <dd className="font-medium text-foreground">{classOption?.total}</dd>
               </dl>
@@ -448,7 +448,7 @@ export default function AbsensiInputPage() {
             </span>
             <DialogTitle className="text-lg">Data berhasil disimpan</DialogTitle>
             <DialogDescription>
-              Absensi kelas {classOption?.name} untuk {todayLabel} telah berhasil disimpan.
+              Absensi kelas {classOption?.name} untuk {dateLabel} telah berhasil disimpan.
             </DialogDescription>
           </DialogHeader>
           {savedAt ? (

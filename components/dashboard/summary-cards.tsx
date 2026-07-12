@@ -45,7 +45,7 @@ export function SummaryCards({
       trend: notSubmittedCount > 0 ? { dir: "down" as const, text: "menunggu" } : undefined,
     },
     {
-      label: "Kehadiran Hari Ini",
+      label: "Tingkat Kehadiran",
       value: `${attendanceRate}%`,
       caption: "Dari kelas yang sudah input",
       icon: UserCheck,
