@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Download,
   UploadCloud,
@@ -39,7 +39,6 @@ import {
   CSV_TEMPLATE,
   csvStatusMeta,
   parseCsv,
-  registerStudent,
   type CsvParseResult,
   type CsvRow,
 } from "@/lib/student-input"
@@ -76,6 +75,9 @@ function toneBadge(tone: "valid" | "skip" | "error") {
 }
 
 export function CsvUpload() {
+  const [classOptions, setClassOptions] = useState<string[]>([])
+  const [registeredNisn, setRegisteredNisn] = useState<Record<string, string>>({})
+  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegisteredNisn(Object.fromEntries(data.students.map((student: { nisn: string; name: string }) => [student.nisn, student.name]))) }) }, [])
   const [dragging, setDragging] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
@@ -136,7 +138,7 @@ export function CsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseCsv(text)
+      const result = parseCsv(text, classOptions, registeredNisn)
       const rowCount = result.ok ? result.total : 0
       setFileInfo({
         name: file.name,
@@ -151,7 +153,7 @@ export function CsvUpload() {
       void rowCount
     }
     reader.readAsText(file)
-  }, [])
+  }, [classOptions, registeredNisn])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {

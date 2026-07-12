@@ -119,7 +119,7 @@ export default function RekapSiswaPage() {
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground">{s.alfa}</TableCell>
                     <TableCell>
-                      <StatusPill status={s.todayStatus} />
+                      {s.todayStatus ? <StatusPill status={s.todayStatus} /> : <span className="text-sm text-muted-foreground">Belum diinput</span>}
                     </TableCell>
                   </TableRow>
                 ))}

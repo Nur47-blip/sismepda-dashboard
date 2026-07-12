@@ -17,10 +17,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { signIn } from "next-auth/react";
 
-// Kredensial demo (mock) — pengganti backend autentikasi.
-const DEMO_EMAIL = "admin@sismepda.sch.id";
-const DEMO_PASSWORD = "admin123";
-
 export default function LoginPage() {
   const router = useRouter();
 
@@ -188,22 +184,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Petunjuk kredensial demo */}
-            {/* <div className="mt-5 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">Akun demo</p>
-              <p className="mt-0.5">
-                Email:{" "}
-                <span className="font-medium text-foreground">
-                  {DEMO_EMAIL}
-                </span>
-              </p>
-              <p>
-                Password:{" "}
-                <span className="font-medium text-foreground">
-                  {DEMO_PASSWORD}
-                </span>
-              </p>
-            </div> */}
           </div>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">

@@ -11,6 +11,7 @@ import {
   ClassRecapCard,
 } from "@/components/dashboard/charts-section"
 import { WeeklyTrend } from "@/components/dashboard/weekly-trend"
+import type { WeeklyTrendPoint } from "@/components/dashboard/weekly-trend"
 import { ClassesNotInput } from "@/components/dashboard/classes-not-input"
 import { AbsentStudentsTable } from "@/components/dashboard/absent-students-table"
 import { ClassProgress } from "@/components/dashboard/class-progress"
@@ -24,16 +25,15 @@ import {
   type ActivityItem,
 } from "@/lib/dashboard-data"
 
-// Simulated loading/error state — in a real app this would come from data fetching.
-const LOADING = false
-const ERROR = false
-
 export default function DashboardPage() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [selectedClass, setSelectedClass] = useState("all")
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
-  useEffect(() => { fetch("/api/dashboard").then((r) => r.json()).then((data) => { setClasses(data.classes); setAbsentStudents(data.absentStudents); setRecentActivity(data.recentActivity) }) }, [])
+  const [weeklyTrend, setWeeklyTrend] = useState<WeeklyTrendPoint[]>([])
+  useEffect(() => { fetch("/api/dashboard").then((response) => { if (!response.ok) throw new Error(); return response.json() }).then((data) => { setClasses(data.classes); setAbsentStudents(data.absentStudents); setRecentActivity(data.recentActivity); setWeeklyTrend(data.weeklyTrend); setLoading(false) }).catch(() => { setError(true); setLoading(false) }) }, [])
 
   const records = useMemo(
     () => (selectedClass === "all" ? classes : classes.filter((c) => c.id === selectedClass)),
@@ -51,9 +51,9 @@ export default function DashboardPage() {
     <PageContainer>
       <DashboardHeader selectedClass={selectedClass} onClassChange={setSelectedClass} classes={classes} />
 
-          {ERROR ? (
+          {error ? (
             <ErrorState />
-          ) : LOADING ? (
+          ) : loading ? (
             <DashboardSkeleton />
           ) : (
             <div className="space-y-6">
@@ -75,7 +75,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col gap-4">
                   <ClassRecapCard records={records} />
-                  <WeeklyTrend />
+                  <WeeklyTrend data={weeklyTrend} />
                   <ClassesNotInput records={records} />
                 </div>
               </div>

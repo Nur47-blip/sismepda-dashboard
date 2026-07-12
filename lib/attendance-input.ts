@@ -1,4 +1,4 @@
-import { classes, students, type AttendanceStatus } from "@/lib/dashboard-data"
+import type { AttendanceStatus } from "@/lib/dashboard-data"
 
 export type InputStatus = "belum" | AttendanceStatus
 
@@ -15,28 +15,6 @@ export type ClassOption = {
   submitted: boolean
   submittedAt: string | null
   homeroom: string
-}
-
-export const inputClassOptions: ClassOption[] = classes.map((c) => ({
-  id: c.id,
-  name: c.name,
-  total: c.totalStudents,
-  submitted: c.submitted,
-  submittedAt: c.submittedAt,
-  homeroom: c.homeroom,
-}))
-
-export function getRoster(classId: string): RosterStudent[] {
-  const cls = classes.find((c) => c.id === classId)
-  if (!cls) return []
-  return students
-    .filter((s) => s.className === cls.name)
-    .sort((a, b) => a.name.localeCompare(b.name, "id"))
-    .map((s, i) => ({ id: s.id, no: i + 1, name: s.name }))
-}
-
-export function getClassOption(classId: string): ClassOption | undefined {
-  return inputClassOptions.find((c) => c.id === classId)
 }
 
 // Urutan tampil status pada segmented buttons & ringkasan

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Loader2,
   Save,
@@ -32,14 +32,14 @@ import {
   defaultPrefixOptions,
   normalizePhone,
   previewName,
-  registerTeacher,
-  registeredTeacherName,
   sanitizeNip,
   validateGuru,
   type GuruErrors,
 } from "@/lib/guru-input"
 
 export function GuruInputForm() {
+  const [registeredNip, setRegisteredNip] = useState<Record<string, string>>({})
+  useEffect(() => { fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegisteredNip(Object.fromEntries(teachers.filter((teacher: { nip: string | null }) => teacher.nip).map((teacher: { nip: string; name: string }) => [teacher.nip, teacher.name])))) }, [])
   const [nip, setNip] = useState("")
   const [prefix, setPrefix] = useState("")
   const [prefixOptions, setPrefixOptions] = useState<string[]>(defaultPrefixOptions)
@@ -63,7 +63,7 @@ export function GuruInputForm() {
   const nipRef = useRef<HTMLInputElement>(null)
 
   const values = { nip, nama, telepon, password, konfirmasi }
-  const liveErrors = touched ? validateGuru(values) : {}
+  const liveErrors = touched ? validateGuru(values, registeredNip) : {}
 
   const nipError = touched ? errors.nip ?? liveErrors.nip : undefined
   const namaError = touched ? errors.nama ?? liveErrors.nama : undefined
@@ -75,11 +75,11 @@ export function GuruInputForm() {
 
   function attemptSave(mode: "single" | "again") {
     setTouched(true)
-    const validation = validateGuru(values)
+    const validation = validateGuru(values, registeredNip)
     setErrors(validation)
 
     if (validation.nip === "NIP sudah terdaftar") {
-      const existing = registeredTeacherName(nip.trim()) ?? "guru lain"
+      const existing = registeredNip[nip.trim()] ?? "guru lain"
       setDuplicateInfo({ nip: nip.trim(), nama: existing })
       return
     }

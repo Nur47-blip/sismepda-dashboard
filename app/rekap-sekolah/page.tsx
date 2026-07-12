@@ -8,12 +8,15 @@ import {
   statusMeta,
   type AttendanceStatus,
 } from "@/lib/dashboard-data"
-import { getTodayClassRecords } from "@/lib/server-dashboard"
+import { getAbsenceRanking, getTodayClassRecords } from "@/lib/server-dashboard"
 
 const statusOrder: AttendanceStatus[] = ["hadir", "sakit", "izin", "dispensasi", "alfa"]
 
 export default async function RekapSekolahPage() {
-  const classes = await getTodayClassRecords()
+  const [classes, absenceRanking] = await Promise.all([
+    getTodayClassRecords(),
+    getAbsenceRanking(),
+  ])
   const summary = computeSummary(classes)
   const perGrade = ["VII", "VIII", "IX"].map((grade) => { const records = classes.filter((c) => c.grade === grade); return { grade, records, summary: computeSummary(records) } })
   const totalTidakHadir =
@@ -153,7 +156,7 @@ export default async function RekapSekolahPage() {
         </CardContent>
       </Card>
 
-      <AbsenceRanking />
+      <AbsenceRanking students={absenceRanking} />
     </PageContainer>
   )
 }

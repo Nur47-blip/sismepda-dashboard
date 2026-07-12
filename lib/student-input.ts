@@ -1,39 +1,3 @@
-import { classes } from "@/lib/dashboard-data"
-
-// Daftar kelas yang tersedia di sistem (berasal dari data sekolah).
-// Nantinya berasal dari database; untuk preview memakai data yang sudah ada.
-export const studentClassOptions: string[] = classes.map((c) => c.name)
-
-const validClassSet = new Set(studentClassOptions.map((c) => c.toLowerCase()))
-
-export function isValidClass(kelas: string): boolean {
-  return validClassSet.has(kelas.trim().toLowerCase())
-}
-
-// Simulasi data NISN yang sudah terdaftar di database.
-// Key: NISN (string, 10 digit), Value: nama siswa.
-export const registeredNisn: Record<string, string> = {
-  "0012345678": "Ahmad Fauzan",
-  "0012345679": "Aisyah Putri Ramadhani",
-  "0023456781": "Dewi Lestari",
-  "0023456782": "Fajar Nugroho",
-  "0034567891": "Gita Anindya",
-  "0034567892": "Hendra Saputra",
-}
-
-export function isNisnRegistered(nisn: string): boolean {
-  return Boolean(registeredNisn[nisn.trim()])
-}
-
-export function registeredStudentName(nisn: string): string | undefined {
-  return registeredNisn[nisn.trim()]
-}
-
-// Menambahkan NISN ke registry (simulasi insert ke database).
-export function registerStudent(nisn: string, nama: string): void {
-  registeredNisn[nisn.trim()] = nama.trim()
-}
-
 const NISN_PATTERN = /^\d{10}$/
 
 export function isValidNisnFormat(nisn: string): boolean {
@@ -52,7 +16,7 @@ export function validateManual(values: {
   nisn: string
   nama: string
   kelas: string
-}): ManualErrors {
+}, classOptions: string[] = [], registeredNisn: Record<string, string> = {}): ManualErrors {
   const errors: ManualErrors = {}
   const nisn = values.nisn.trim()
   const nama = values.nama.trim()
@@ -61,7 +25,7 @@ export function validateManual(values: {
     errors.nisn = "NISN wajib diisi"
   } else if (!isValidNisnFormat(nisn)) {
     errors.nisn = "NISN harus terdiri dari 10 digit angka"
-  } else if (isNisnRegistered(nisn)) {
+  } else if (registeredNisn[nisn]) {
     errors.nisn = "NISN sudah terdaftar pada siswa lain"
   }
 
@@ -71,6 +35,8 @@ export function validateManual(values: {
 
   if (!values.kelas) {
     errors.kelas = "Kelas wajib dipilih"
+  } else if (!classOptions.some((item) => item.toLowerCase() === values.kelas.toLowerCase())) {
+    errors.kelas = "Kelas tidak ditemukan"
   }
 
   return errors
@@ -113,7 +79,7 @@ function splitCsvLine(line: string): string[] {
   return line.split(",").map((c) => c.trim())
 }
 
-export function parseCsv(text: string): CsvParseResult {
+export function parseCsv(text: string, classOptions: string[] = [], registeredNisn: Record<string, string> = {}): CsvParseResult {
   const lines = text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -162,13 +128,13 @@ export function parseCsv(text: string): CsvParseResult {
       status = "nisn_tidak_valid"
     } else if ((nisnSeen.get(nisn) ?? 0) > 1) {
       status = "nisn_duplikat_file"
-    } else if (isNisnRegistered(nisn)) {
+    } else if (registeredNisn[nisn]) {
       status = "nisn_terdaftar"
     } else if (!nama) {
       status = "nama_kosong"
     } else if (!kelas) {
       status = "kelas_kosong"
-    } else if (!isValidClass(kelas)) {
+    } else if (!classOptions.some((item) => item.toLowerCase() === kelas.toLowerCase())) {
       status = "kelas_tidak_ditemukan"
     }
 

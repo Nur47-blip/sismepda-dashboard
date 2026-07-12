@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Loader2, Save, UserPlus, CircleCheckBig, CircleAlert } from "lucide-react"
 import { toast } from "sonner"
 
@@ -26,9 +26,6 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import {
-  registerStudent,
-  registeredStudentName,
-  studentClassOptions,
   validateManual,
   type ManualErrors,
 } from "@/lib/student-input"
@@ -39,6 +36,10 @@ export function ManualInputForm() {
   const [nisn, setNisn] = useState("")
   const [nama, setNama] = useState("")
   const [kelas, setKelas] = useState("")
+  const [classOptions, setClassOptions] = useState<string[]>([])
+  const [registeredNisn, setRegisteredNisn] = useState<Record<string, string>>({})
+
+  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegisteredNisn(Object.fromEntries(data.students.map((student: { nisn: string; name: string }) => [student.nisn, student.name]))) }) }, [])
 
   const [touched, setTouched] = useState(false)
   const [errors, setErrors] = useState<ManualErrors>({})
@@ -50,7 +51,7 @@ export function ManualInputForm() {
 
   const nisnRef = useRef<HTMLInputElement>(null)
 
-  const liveErrors = touched ? validateManual({ nisn, nama, kelas }) : {}
+  const liveErrors = touched ? validateManual({ nisn, nama, kelas }, classOptions, registeredNisn) : {}
 
   function handleNisnChange(value: string) {
     // Hanya angka, maksimal 10 digit, disimpan sebagai string (nol depan dipertahankan)
@@ -60,12 +61,12 @@ export function ManualInputForm() {
 
   async function runSave(mode: "single" | "again") {
     setTouched(true)
-    const validation = validateManual({ nisn, nama, kelas })
+    const validation = validateManual({ nisn, nama, kelas }, classOptions, registeredNisn)
     setErrors(validation)
 
     // Kasus khusus: NISN duplikat -> tampilkan dialog informatif
     if (validation.nisn === "NISN sudah terdaftar pada siswa lain") {
-      const existing = registeredStudentName(nisn) ?? "siswa lain"
+      const existing = registeredNisn[nisn] ?? "siswa lain"
       setDuplicateInfo({ nisn, nama: existing })
       return
     }
@@ -199,7 +200,7 @@ export function ManualInputForm() {
                   <SelectValue placeholder="Pilih kelas" />
                 </SelectTrigger>
                 <SelectContent>
-                  {studentClassOptions.map((c) => (
+                  {classOptions.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
                     </SelectItem>

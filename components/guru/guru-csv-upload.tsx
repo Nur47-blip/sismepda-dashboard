@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Download,
   UploadCloud,
@@ -39,7 +39,6 @@ import {
   GURU_CSV_TEMPLATE,
   guruCsvStatusMeta,
   parseGuruCsv,
-  registerTeacher,
   previewName,
   type GuruCsvParseResult,
   type GuruCsvRow,
@@ -77,6 +76,8 @@ function toneBadge(tone: "valid" | "skip" | "error") {
 }
 
 export function GuruCsvUpload() {
+  const [registeredNip, setRegisteredNip] = useState<Record<string, string>>({})
+  useEffect(() => { fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegisteredNip(Object.fromEntries(teachers.filter((teacher: { nip: string | null }) => teacher.nip).map((teacher: { nip: string; name: string }) => [teacher.nip, teacher.name])))) }, [])
   const [dragging, setDragging] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
@@ -137,7 +138,7 @@ export function GuruCsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseGuruCsv(text)
+      const result = parseGuruCsv(text, registeredNip)
       setFileInfo({
         name: file.name,
         size: file.size,
@@ -150,7 +151,7 @@ export function GuruCsvUpload() {
       setReading(false)
     }
     reader.readAsText(file)
-  }, [])
+  }, [registeredNip])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {

@@ -27,8 +27,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { students, type StudentRow } from "@/lib/dashboard-data"
 import { cn } from "@/lib/utils"
+
+export type AbsenceRankingRow = {
+  id: string
+  name: string
+  className: string
+  sakit: number
+  izin: number
+  alfa: number
+  dispensasi: number
+}
 
 type StatusKey = "sakit" | "izin" | "alfa" | "dispensasi"
 type SortKey = "rank" | "name" | "className" | StatusKey | "total"
@@ -49,7 +58,7 @@ const rankBadge: Record<number, string> = {
   3: "bg-orange-100 text-orange-700 ring-1 ring-orange-300",
 }
 
-export function AbsenceRanking() {
+export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) {
   const [active, setActive] = useState<Record<StatusKey, boolean>>({
     sakit: true,
     izin: true,
@@ -64,8 +73,6 @@ export function AbsenceRanking() {
 
   const activeKeys = statusFilters.map((s) => s.key).filter((k) => active[k])
   const noneActive = activeKeys.length === 0
-
-  const total = (s: StudentRow) => activeKeys.reduce((sum, k) => sum + s[k], 0)
 
   // Filter by search + compute totals
   const filtered = useMemo(() => {

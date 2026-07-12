@@ -1,28 +1,3 @@
-// Data & validasi untuk halaman Input Data Guru.
-// Untuk preview memakai data simulasi; nantinya berasal dari database.
-
-// ---------- Registry NIP (simulasi data yang sudah terdaftar) ----------
-// Key: NIP (string, angka), Value: nama guru.
-export const registeredNip: Record<string, string> = {
-  "196805121994031002": "Bpk. Slamet Riyadi",
-  "197203152000032001": "Ibu Sri Wahyuni",
-  "198104102005011003": "Bpk. Agus Setiawan",
-  "198809172011012004": "Ibu Nurul Hidayah",
-}
-
-export function isNipRegistered(nip: string): boolean {
-  return Boolean(registeredNip[nip.trim()])
-}
-
-export function registeredTeacherName(nip: string): string | undefined {
-  return registeredNip[nip.trim()]
-}
-
-// Menambahkan NIP ke registry (simulasi insert ke database).
-export function registerTeacher(nip: string, nama: string): void {
-  registeredNip[nip.trim()] = nama.trim()
-}
-
 // ---------- Prefix / sapaan ----------
 // Daftar awal; admin dapat menambahkan nilai baru lewat combobox.
 export const defaultPrefixOptions: string[] = [
@@ -87,7 +62,7 @@ export function validateGuru(values: {
   telepon: string
   password: string
   konfirmasi: string
-}): GuruErrors {
+}, registeredNip: Record<string, string> = {}): GuruErrors {
   const errors: GuruErrors = {}
   const nip = values.nip.trim()
   const nama = values.nama.trim()
@@ -97,7 +72,7 @@ export function validateGuru(values: {
     errors.nip = "NIP wajib diisi"
   } else if (!isValidNipFormat(nip)) {
     errors.nip = "NIP hanya boleh berisi angka"
-  } else if (isNipRegistered(nip)) {
+  } else if (registeredNip[nip]) {
     errors.nip = "NIP sudah terdaftar"
   }
 
@@ -171,7 +146,7 @@ function splitCsvLine(line: string): string[] {
   return line.split(",").map((c) => c.trim())
 }
 
-export function parseGuruCsv(text: string): GuruCsvParseResult {
+export function parseGuruCsv(text: string, registeredNip: Record<string, string> = {}): GuruCsvParseResult {
   const lines = text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -220,7 +195,7 @@ export function parseGuruCsv(text: string): GuruCsvParseResult {
       status = "nip_tidak_valid"
     } else if ((nipSeen.get(nip) ?? 0) > 1) {
       status = "nip_duplikat_file"
-    } else if (isNipRegistered(nip)) {
+    } else if (registeredNip[nip]) {
       status = "nip_terdaftar"
     } else if (!nama) {
       status = "nama_kosong"

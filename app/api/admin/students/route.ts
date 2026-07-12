@@ -5,6 +5,17 @@ import { prisma } from "@/lib/prisma"
 
 const student = z.object({ nisn: z.string().regex(/^\d{10}$/), name: z.string().min(1), className: z.string().min(1) })
 
+export async function GET() {
+  try {
+    await requireAdmin()
+    const [classes, students] = await Promise.all([
+      prisma.schoolClass.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+      prisma.student.findMany({ select: { nisn: true, name: true } }),
+    ])
+    return NextResponse.json({ classes: classes.map((item) => item.name), students })
+  } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
+}
+
 export async function POST(request: Request) {
   try {
     await requireAdmin()
