@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { PageContainer, PageHeading } from "@/components/layout/page-container"
 import { HolidayManager } from "@/components/settings/holiday-manager"
+import { DatabaseBackupCard } from "@/components/settings/database-backup"
 
 export default function PengaturanPage() {
   const [notifReminder, setNotifReminder] = useState(true)
@@ -61,6 +62,8 @@ export default function PengaturanPage() {
       </Card>
 
       <HolidayManager />
+
+      <DatabaseBackupCard />
 
       <Card>
         <CardHeader>
