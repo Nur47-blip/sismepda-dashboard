@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Pencil, Search, UserCheck, UserX } from "lucide-react"
+import { Loader2, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,8 @@ export function StudentManager() {
   const [editing, setEditing] = useState<Student | null>(null)
   const [values, setValues] = useState<EditValues>({ nisn: "", name: "", className: "" })
   const [statusTarget, setStatusTarget] = useState<Student | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Student | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
 
   async function loadStudents() {
     setLoading(true)
@@ -86,6 +88,21 @@ export function StudentManager() {
     finally { setSaving(false) }
   }
 
+  async function deleteStudent() {
+    if (!deleteTarget || deleteConfirmation !== deleteTarget.nisn) return
+    setSaving(true)
+    try {
+      const response = await fetch("/api/admin/students", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: deleteTarget.id, confirmationNisn: deleteConfirmation }) })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? "Siswa gagal dihapus permanen")
+      setStudents((current) => current.filter((student) => student.id !== deleteTarget.id))
+      setDeleteTarget(null)
+      setDeleteConfirmation("")
+      toast.success("Siswa dihapus permanen", { description: `${data.deletedAttendances} record absensi ikut dihapus.` })
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Siswa gagal dihapus permanen") }
+    finally { setSaving(false) }
+  }
+
   return (
     <div className="space-y-4">
       <Card className="border-border/70">
@@ -112,7 +129,7 @@ export function StudentManager() {
             <TableRow key={student.id} className={!student.active ? "opacity-65" : undefined}>
               <TableCell className="font-medium">{student.name}</TableCell><TableCell className="font-mono text-sm">{student.nisn}</TableCell><TableCell>{student.className}</TableCell>
               <TableCell><Badge variant={student.active ? "default" : "secondary"}>{student.active ? "Aktif" : "Nonaktif"}</Badge></TableCell>
-              <TableCell><div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => openEdit(student)}><Pencil className="size-4" /> Edit</Button><Button variant="outline" size="sm" onClick={() => setStatusTarget(student)}>{student.active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}{student.active ? "Nonaktifkan" : "Aktifkan"}</Button></div></TableCell>
+              <TableCell><div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => openEdit(student)}><Pencil className="size-4" /> Edit</Button><Button variant="outline" size="sm" onClick={() => setStatusTarget(student)}>{student.active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}{student.active ? "Nonaktifkan" : "Aktifkan"}</Button><Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setDeleteTarget(student); setDeleteConfirmation("") }}><Trash2 className="size-4" /> Hapus</Button></div></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -125,6 +142,8 @@ export function StudentManager() {
       </DialogContent></Dialog>
 
       <Dialog open={Boolean(statusTarget)} onOpenChange={(open) => { if (!open && !saving) setStatusTarget(null) }}><DialogContent><DialogHeader><DialogTitle>{statusTarget?.active ? "Nonaktifkan siswa?" : "Aktifkan kembali siswa?"}</DialogTitle><DialogDescription>{statusTarget?.active ? `${statusTarget.name} tidak akan muncul dalam input absensi berikutnya. Riwayat absensinya tetap tersimpan.` : `${statusTarget?.name} akan kembali muncul dalam daftar siswa dan input absensi.`}</DialogDescription></DialogHeader><DialogFooter><DialogClose render={<Button variant="outline" disabled={saving} />}>Batal</DialogClose><Button variant={statusTarget?.active ? "destructive" : "default"} onClick={changeStatus} disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null}{statusTarget?.active ? "Ya, Nonaktifkan" : "Ya, Aktifkan"}</Button></DialogFooter></DialogContent></Dialog>
+
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !saving) { setDeleteTarget(null); setDeleteConfirmation("") } }}><DialogContent><DialogHeader><DialogTitle>Hapus siswa secara permanen?</DialogTitle><DialogDescription>Tindakan ini akan menghapus {deleteTarget?.name} dan seluruh riwayat absensinya. Data tidak dapat dipulihkan. Ketik NISN siswa untuk mengonfirmasi.</DialogDescription></DialogHeader><div className="space-y-1.5"><Label htmlFor="delete-nisn">Ketik NISN {deleteTarget?.nisn}</Label><Input id="delete-nisn" inputMode="numeric" autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Masukkan 10 digit NISN" /></div><DialogFooter><DialogClose render={<Button variant="outline" disabled={saving} />}>Batal</DialogClose><Button variant="destructive" onClick={deleteStudent} disabled={saving || deleteConfirmation !== deleteTarget?.nisn}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}{saving ? "Menghapus..." : "Hapus Permanen"}</Button></DialogFooter></DialogContent></Dialog>
     </div>
   )
 }

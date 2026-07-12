@@ -50,6 +50,26 @@ export async function PATCH(request: Request) {
   }
 }
 
+const studentDelete = z.object({ id: z.string().min(1), confirmationNisn: z.string().regex(/^\d{10}$/) })
+
+export async function DELETE(request: Request) {
+  try {
+    await requireAdmin()
+    const body = studentDelete.parse(await request.json())
+    const existing = await prisma.student.findUnique({ where: { id: body.id }, select: { nisn: true } })
+    if (!existing) return NextResponse.json({ error: "Siswa tidak ditemukan" }, { status: 404 })
+    if (existing.nisn !== body.confirmationNisn) return NextResponse.json({ error: "Konfirmasi NISN tidak sesuai" }, { status: 400 })
+    const deletedAttendances = await prisma.$transaction(async (tx) => {
+      const result = await tx.attendance.deleteMany({ where: { studentId: body.id } })
+      await tx.student.delete({ where: { id: body.id } })
+      return result.count
+    })
+    return NextResponse.json({ id: body.id, deletedAttendances })
+  } catch {
+    return NextResponse.json({ error: "Siswa gagal dihapus permanen" }, { status: 400 })
+  }
+}
+
 export async function POST(request: Request) {
   try {
     await requireAdmin()
