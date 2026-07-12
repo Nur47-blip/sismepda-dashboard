@@ -1,6 +1,5 @@
-import { AlertTriangle, Bell, CheckCircle2 } from "lucide-react"
+import { AlertTriangle, CheckCircle2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import type { ClassRecord } from "@/lib/dashboard-data"
 
 export function ClassesNotInput({ records }: { records: ClassRecord[] }) {
@@ -46,10 +45,6 @@ export function ClassesNotInput({ records }: { records: ClassRecord[] }) {
                     Wali: {c.homeroom} · {c.totalStudents} siswa
                   </p>
                 </div>
-                <Button variant="outline" size="sm" className="shrink-0 gap-1.5 bg-card">
-                  <Bell className="size-3.5" />
-                  Ingatkan
-                </Button>
               </li>
             ))}
           </ul>

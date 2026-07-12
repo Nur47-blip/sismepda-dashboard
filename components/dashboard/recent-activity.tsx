@@ -17,7 +17,7 @@ export function RecentActivity({ items }: { items: ActivityItem[] }) {
           <History className="size-4 text-primary" />
           Aktivitas Terbaru
         </CardTitle>
-        <CardDescription>Riwayat input dan perubahan absensi</CardDescription>
+        <CardDescription>Riwayat penyimpanan absensi pada tanggal dipilih</CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">

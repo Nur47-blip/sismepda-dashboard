@@ -44,7 +44,7 @@ import {
 } from "@/lib/attendance-input"
 import { formatLongDate, localDateValue, parseDateValue } from "@/lib/date"
 
-type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; name: string }>; attendanceDays: Array<{ submittedAt: string; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
+type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; name: string }>; attendanceDays: Array<{ submittedAt: string; updatedAt: string; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
 
 function emptyCounts(): Record<InputStatus, number> {
   return { belum: 0, hadir: 0, sakit: 0, izin: 0, alfa: 0, dispensasi: 0 }
@@ -79,7 +79,7 @@ export default function AbsensiInputPage() {
   const dateLabel = formatLongDate(date)
   useEffect(() => { if (!dateReady) return; fetch(`/api/attendance?date=${date}`).then((r) => r.json()).then((data) => { setClasses(data.classes); setHoliday(data.holiday); setSelectedClass(""); setStatuses({}); setNotes({}); setHasSaved(false); setLastSaved(null) }).catch(() => toast.error("Gagal memuat kelas")) }, [date, dateReady])
   const selected = classes.find((c) => c.id === selectedClass)
-  const classOption = selected ? { id: selected.id, name: selected.name, total: selected.students.length, homeroom: selected.homeroomUser?.name ?? "Admin", submitted: selected.attendanceDays.length > 0, submittedAt: selected.attendanceDays[0]?.submittedAt ?? null } : undefined
+  const classOption = selected ? { id: selected.id, name: selected.name, total: selected.students.length, homeroom: selected.homeroomUser?.name ?? "Admin", submitted: selected.attendanceDays.length > 0, submittedAt: selected.attendanceDays[0]?.updatedAt ?? null } : undefined
   const roster = useMemo(() => (selected?.students ?? []).map((s, i) => ({ ...s, no: i + 1 })), [selected])
 
   const counts = useMemo(() => {
@@ -106,7 +106,7 @@ export default function AbsensiInputPage() {
 
   const applyClass = useCallback((id: string) => {
     const cls = classes.find((c) => c.id === id)
-    const option = cls ? { submitted: cls.attendanceDays.length > 0, submittedAt: cls.attendanceDays[0]?.submittedAt, homeroom: cls.homeroomUser?.name ?? "Admin" } : undefined
+    const option = cls ? { submitted: cls.attendanceDays.length > 0, submittedAt: cls.attendanceDays[0]?.updatedAt, homeroom: cls.homeroomUser?.name ?? "Admin" } : undefined
     const list = cls?.students ?? []
     const saved = cls?.attendanceDays[0]?.attendances ?? []
     const nextStatuses: Record<string, InputStatus> = {}

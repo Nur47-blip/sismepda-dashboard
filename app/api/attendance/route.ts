@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const holiday = await prisma.schoolHoliday.findUnique({ where: { date }, select: { name: true } })
     if (holiday) return NextResponse.json({ error: `Tanggal ini ditandai sebagai hari libur: ${holiday.name}` }, { status: 400 })
     await prisma.$transaction(async (tx) => {
-      const day = await tx.attendanceDay.upsert({ where: { classId_date: { classId: body.classId, date } }, update: { submittedById: user.id, submittedAt: new Date() }, create: { classId: body.classId, date, submittedById: user.id } })
+      const day = await tx.attendanceDay.upsert({ where: { classId_date: { classId: body.classId, date } }, update: { submittedById: user.id }, create: { classId: body.classId, date, submittedById: user.id } })
       for (const r of body.records) await tx.attendance.upsert({ where: { attendanceDayId_studentId: { attendanceDayId: day.id, studentId: r.studentId } }, update: { status: r.status as never, note: r.note }, create: { attendanceDayId: day.id, studentId: r.studentId, status: r.status as never, note: r.note } })
     })
     return NextResponse.json({ ok: true, submittedAt: new Date().toISOString() })

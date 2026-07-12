@@ -61,6 +61,7 @@ model AttendanceDay {
   classId String
   submittedById String
   submittedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   schoolClass SchoolClass @relation(fields: [classId], references: [id])
   submittedBy User @relation(fields: [submittedById], references: [id])
   attendances Attendance[]

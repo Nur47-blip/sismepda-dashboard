@@ -69,6 +69,8 @@ export default function DashboardPage() {
                 notSubmittedCount={summary.notSubmittedCount}
                 attendanceRate={summary.attendanceRate}
                 totalStudentsAll={summary.totalStudentsAll}
+                onTimeCount={summary.onTimeCount}
+                attendanceDelta={summary.attendanceDelta}
               />
 
               <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">

@@ -8,6 +8,8 @@ type SummaryCardsProps = {
   notSubmittedCount: number
   attendanceRate: number
   totalStudentsAll: number
+  onTimeCount: number
+  attendanceDelta: number | null
 }
 
 export function SummaryCards({
@@ -16,6 +18,8 @@ export function SummaryCards({
   notSubmittedCount,
   attendanceRate,
   totalStudentsAll,
+  onTimeCount,
+  attendanceDelta,
 }: SummaryCardsProps) {
   const cards = [
     {
@@ -29,11 +33,11 @@ export function SummaryCards({
     {
       label: "Sudah Input",
       value: submittedCount,
-      caption: `${Math.round((submittedCount / totalClasses) * 100)}% kelas selesai`,
+      caption: `${totalClasses > 0 ? Math.round((submittedCount / totalClasses) * 100) : 0}% kelas selesai`,
       icon: CheckCircle2,
       gradient: "from-[var(--chart-1)]/15 to-[var(--chart-1)]/5",
       iconBg: "bg-[var(--chart-1)]/15 text-[var(--chart-1)]",
-      trend: { dir: "up" as const, text: "tepat waktu" },
+      trend: submittedCount > 0 ? { dir: onTimeCount === submittedCount ? "up" as const : "down" as const, text: `${onTimeCount}/${submittedCount} tepat waktu` } : undefined,
     },
     {
       label: "Belum Input",
@@ -51,7 +55,7 @@ export function SummaryCards({
       icon: UserCheck,
       gradient: "from-[var(--chart-2)]/15 to-[var(--chart-2)]/5",
       iconBg: "bg-[var(--chart-2)]/15 text-[var(--chart-2)]",
-      trend: { dir: "up" as const, text: "+2% vs kemarin" },
+      trend: attendanceDelta === null ? undefined : { dir: attendanceDelta >= 0 ? "up" as const : "down" as const, text: `${attendanceDelta > 0 ? "+" : ""}${attendanceDelta}% vs hari masuk sebelumnya` },
     },
   ]
 

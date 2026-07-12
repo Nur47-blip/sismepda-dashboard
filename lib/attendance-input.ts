@@ -86,7 +86,9 @@ export const inputStatusConfig: Record<InputStatus, StatusConfig> = {
 
 // Format "07:24" -> "07.24" (konvensi jam Indonesia)
 export function formatJam(time: string): string {
-  return time.replace(":", ".")
+  const parsed = new Date(time)
+  if (!Number.isNaN(parsed.getTime())) return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false }).format(parsed).replace(".", ":")
+  return time.replace(".", ":")
 }
 
 export function currentJam(): string {

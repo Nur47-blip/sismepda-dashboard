@@ -13,6 +13,9 @@ export type ClassRecord = {
   dispensasi: number
   submitted: boolean
   submittedAt: string | null
+  onTime: boolean | null
+  previousHadir: number
+  previousTotal: number
 }
 
 export type AbsenceHistory = {
@@ -59,6 +62,11 @@ export function computeSummary(records: ClassRecord[]) {
     totalPresentEligible > 0 ? Math.round((totalHadir / totalPresentEligible) * 100) : 0
 
   const totalStudentsAll = records.reduce((sum, c) => sum + c.totalStudents, 0)
+  const previousHadir = records.reduce((sum, c) => sum + c.previousHadir, 0)
+  const previousTotal = records.reduce((sum, c) => sum + c.previousTotal, 0)
+  const previousAttendanceRate = previousTotal > 0 ? Math.round((previousHadir / previousTotal) * 100) : null
+  const attendanceDelta = previousAttendanceRate === null ? null : attendanceRate - previousAttendanceRate
+  const onTimeCount = submitted.filter((record) => record.onTime).length
 
   return {
     totalClasses,
@@ -72,6 +80,9 @@ export function computeSummary(records: ClassRecord[]) {
     attendanceRate,
     totalStudentsAll,
     completionRate: totalClasses > 0 ? Math.round((submitted.length / totalClasses) * 100) : 0,
+    onTimeCount,
+    previousAttendanceRate,
+    attendanceDelta,
   }
 }
 
