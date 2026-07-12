@@ -4,6 +4,7 @@ import {
   UserPlus,
   UserCog,
   UserRoundPlus,
+  Contact,
   UserRoundCog,
   Building2,
   BookOpen,
@@ -54,6 +55,13 @@ export const navItems: NavItem[] = [
     href: "/guru/input",
     icon: UserRoundPlus,
     description: "Tambahkan data & akun guru baru",
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Kelola Guru",
+    href: "/guru/kelola",
+    icon: Contact,
+    description: "Edit akun dan status guru",
     roles: ["ADMIN"],
   },
   {

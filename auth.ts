@@ -38,7 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const loggedIn = Boolean(auth?.user)
       if (path === "/login") return loggedIn ? Response.redirect(new URL("/", request.nextUrl)) : true
       if (!loggedIn) return false
-      const adminOnly = ["/siswa/input", "/guru/input", "/wali-kelas/input", "/pengaturan"]
+      const adminOnly = ["/siswa/input", "/siswa/kelola", "/guru/input", "/guru/kelola", "/wali-kelas/input", "/pengaturan"]
       if (adminOnly.some((route) => path.startsWith(route)) && auth?.user.role !== "ADMIN") {
         return Response.redirect(new URL("/", request.nextUrl))
       }
