@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import { parseDateValue } from "@/lib/date"
+import { sortClasses } from "@/lib/class-order"
 
 export async function GET(request: Request) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
       where: classWhere,
       include: { students: { where: { active: true } }, homeroomUser: { select: { name: true } }, attendanceDays: { where: { date }, include: { attendances: { include: { student: { include: { attendances: { select: { status: true } } } } } } } } }, orderBy: { name: "asc" },
     })
-    const classes = rows.map((c) => {
+    const classes = sortClasses(rows).map((c) => {
       const day = c.attendanceDays[0]; const count = (status: string) => day?.attendances.filter((a) => a.status === status).length ?? 0
       return { id: c.id, name: c.name, grade: c.grade, homeroom: c.homeroomUser?.name ?? "Belum ditentukan", totalStudents: c.students.length, submitted: Boolean(day), submittedAt: day ? new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }).format(day.submittedAt).replace(".", ":") : null, hadir: count("HADIR"), sakit: count("SAKIT"), izin: count("IZIN"), alfa: count("ALFA"), dispensasi: count("DISPENSASI") }
     })

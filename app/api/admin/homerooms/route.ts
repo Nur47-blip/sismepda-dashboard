@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
+import { sortClasses } from "@/lib/class-order"
 
 export async function GET() {
   try {
@@ -9,7 +10,7 @@ export async function GET() {
       prisma.schoolClass.findMany({ orderBy: { name: "asc" } }),
       prisma.user.findMany({ where: { role: "GURU", active: true }, select: { id: true, nip: true, name: true } }),
     ])
-    return NextResponse.json({ classes, teachers })
+    return NextResponse.json({ classes: sortClasses(classes), teachers })
   } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
 }
 

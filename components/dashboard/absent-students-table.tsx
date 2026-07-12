@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { statusMeta, type AbsentStudent } from "@/lib/dashboard-data"
+import { compareClassNames } from "@/lib/class-order"
 
 function initials(name: string) {
   return name
@@ -90,7 +91,7 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
           cmp = byName(a, b)
           break
         case "className":
-          cmp = a.className.localeCompare(b.className, "id")
+          cmp = compareClassNames(a.className, b.className)
           break
         case "status":
           cmp = statusMeta[a.status].label.localeCompare(statusMeta[b.status].label, "id")

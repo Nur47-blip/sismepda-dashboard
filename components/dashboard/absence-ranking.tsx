@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { compareClassNames } from "@/lib/class-order"
 
 export type AbsenceRankingRow = {
   id: string
@@ -108,7 +109,7 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
           cmp = a.student.name.localeCompare(b.student.name, "id")
           break
         case "className":
-          cmp = a.student.className.localeCompare(b.student.className, "id", { numeric: true })
+          cmp = compareClassNames(a.student.className, b.student.className)
           break
         case "total":
         case "rank":

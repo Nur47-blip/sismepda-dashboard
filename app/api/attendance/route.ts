@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import { parseDateValue, startOfToday } from "@/lib/date"
+import { sortClasses } from "@/lib/class-order"
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
       include: { students: { where: { active: true }, orderBy: { name: "asc" } }, homeroomUser: { select: { name: true } }, attendanceDays: { where: { date: parseDateValue(new URL(request.url).searchParams.get("date")) }, include: { attendances: true } } },
       orderBy: { name: "asc" },
     })
-    return NextResponse.json(classes)
+    return NextResponse.json(sortClasses(classes))
   } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
 }
 

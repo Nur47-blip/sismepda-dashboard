@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import type { ClassRecord } from "@/lib/dashboard-data"
 import type { AbsenceRankingRow } from "@/components/dashboard/absence-ranking"
+import { sortClasses } from "@/lib/class-order"
 
 export async function getClassRecords(date: Date): Promise<ClassRecord[]> {
   const user = await requireUser()
@@ -10,7 +11,7 @@ export async function getClassRecords(date: Date): Promise<ClassRecord[]> {
     include: { students: { where: { active: true } }, homeroomUser: true, attendanceDays: { where: { date }, include: { attendances: true } } },
     orderBy: { name: "asc" },
   })
-  return rows.map((c) => {
+  return sortClasses(rows).map((c) => {
     const day = c.attendanceDays[0]
     const count = (status: string) => day?.attendances.filter((a) => a.status === status).length ?? 0
     return {

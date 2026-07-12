@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import { parseDateValue } from "@/lib/date"
+import { sortClasses } from "@/lib/class-order"
 
 export async function GET(request: Request) {
   try {
@@ -12,6 +13,6 @@ export async function GET(request: Request) {
       prisma.schoolClass.findMany({ where: classWhere, select: { name: true }, orderBy: { name: "asc" } }),
     ])
     const rows = students.map((s) => { const count = (status: string) => s.attendances.filter((a) => a.status === status).length; const todayRecord = s.attendances.find((a) => a.attendanceDay.date.getTime() === today.getTime()); return { id: s.id, name: s.name, className: s.schoolClass.name, grade: s.schoolClass.grade, hadir: count("HADIR"), sakit: count("SAKIT"), izin: count("IZIN"), dispensasi: count("DISPENSASI"), alfa: count("ALFA"), todayStatus: todayRecord?.status.toLowerCase() ?? null } })
-    return NextResponse.json({ students: rows, classes: classes.map((item) => item.name) })
+    return NextResponse.json({ students: rows, classes: sortClasses(classes).map((item) => item.name) })
   } catch { return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 }) }
 }
