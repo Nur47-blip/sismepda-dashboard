@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
+import { clearLoginFailures, consumeLoginAttempt } from "@/lib/login-rate-limit"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
@@ -10,14 +11,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { identifier: {}, password: {} },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = z.object({ identifier: z.string().min(1), password: z.string().min(1) }).safeParse(raw)
         if (!parsed.success) return null
         const identifier = parsed.data.identifier.trim().toLowerCase()
+        if (!consumeLoginAttempt(request, identifier)) return null
         const user = await prisma.user.findFirst({
           where: { active: true, OR: [{ email: identifier }, { nip: parsed.data.identifier.trim() }] },
         })
         if (!user || !(await compare(parsed.data.password, user.passwordHash))) return null
+        clearLoginFailures(request, identifier)
         return { id: user.id, name: user.name, email: user.email, role: user.role, nip: user.nip }
       },
     }),

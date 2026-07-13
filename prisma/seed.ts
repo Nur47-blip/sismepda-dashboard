@@ -3,21 +3,29 @@ import { hash } from "bcryptjs"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient, Role } from "../app/generated/prisma/client"
 
-if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL belum dikonfigurasi")
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) })
+function requiredEnv(name: "DATABASE_URL" | "SEED_ADMIN_EMAIL" | "SEED_ADMIN_PASSWORD") {
+  const value = process.env[name]
+  if (!value?.trim()) throw new Error(`${name} wajib dikonfigurasi`)
+  return value
+}
+
+const databaseUrl = requiredEnv("DATABASE_URL").trim()
+const adminEmail = requiredEnv("SEED_ADMIN_EMAIL").trim()
+const adminPassword = requiredEnv("SEED_ADMIN_PASSWORD")
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) })
 const classNames = ["VII", "VIII", "IX"].flatMap((grade) =>
   ["A", "B", "C", "D", "E", "F", "G", "H", "I"].map((section) => `${grade} ${section}`),
 )
 
 async function main() {
   await prisma.user.upsert({
-    where: { email: process.env.SEED_ADMIN_EMAIL ?? "admin@sismepda.sch.id" },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: process.env.SEED_ADMIN_EMAIL ?? "admin@sismepda.sch.id",
+      email: adminEmail,
       name: "Admin Sekolah",
       role: Role.ADMIN,
-      passwordHash: await hash(process.env.SEED_ADMIN_PASSWORD ?? "admin123", 12),
+      passwordHash: await hash(adminPassword, 12),
     },
   })
   for (const name of classNames) {

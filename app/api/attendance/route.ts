@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import { parseDateValue, startOfToday } from "@/lib/date"
 import { sortClasses } from "@/lib/class-order"
+
+const attendanceInput = z.object({
+  classId: z.string().min(1),
+  date: z.string().optional(),
+  records: z.array(z.object({
+    studentId: z.string().min(1),
+    status: z.enum(["HADIR", "SAKIT", "IZIN", "ALFA", "DISPENSASI"]),
+    note: z.string().optional(),
+  })),
+})
 
 export async function GET(request: Request) {
   try {
@@ -21,17 +32,20 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser()
-    const body = await request.json() as { classId: string; date?: string; records: Array<{ studentId: string; status: string; note?: string }> }
+    const body = attendanceInput.parse(await request.json())
     const cls = await prisma.schoolClass.findUnique({ where: { id: body.classId } })
     if (!cls || (user.role === "GURU" && cls.homeroomUserId !== user.id)) return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 })
-    if (body.records.some((r) => !["HADIR","SAKIT","IZIN","ALFA","DISPENSASI"].includes(r.status))) return NextResponse.json({ error: "Semua status wajib diisi" }, { status: 400 })
+    const studentIds = body.records.map((record) => record.studentId)
+    if (new Set(studentIds).size !== studentIds.length) return NextResponse.json({ error: "Data siswa duplikat" }, { status: 400 })
+    const validStudents = await prisma.student.count({ where: { id: { in: studentIds }, classId: body.classId, active: true } })
+    if (validStudents !== studentIds.length) return NextResponse.json({ error: "Terdapat siswa yang tidak terdaftar di kelas ini" }, { status: 400 })
     const date = parseDateValue(body.date)
     if (date > startOfToday()) return NextResponse.json({ error: "Tanggal absensi tidak boleh di masa depan" }, { status: 400 })
     const holiday = await prisma.schoolHoliday.findUnique({ where: { date }, select: { name: true } })
     if (holiday) return NextResponse.json({ error: `Tanggal ini ditandai sebagai hari libur: ${holiday.name}` }, { status: 400 })
     await prisma.$transaction(async (tx) => {
       const day = await tx.attendanceDay.upsert({ where: { classId_date: { classId: body.classId, date } }, update: { submittedById: user.id }, create: { classId: body.classId, date, submittedById: user.id } })
-      for (const r of body.records) await tx.attendance.upsert({ where: { attendanceDayId_studentId: { attendanceDayId: day.id, studentId: r.studentId } }, update: { status: r.status as never, note: r.note }, create: { attendanceDayId: day.id, studentId: r.studentId, status: r.status as never, note: r.note } })
+      for (const r of body.records) await tx.attendance.upsert({ where: { attendanceDayId_studentId: { attendanceDayId: day.id, studentId: r.studentId } }, update: { status: r.status, note: r.note }, create: { attendanceDayId: day.id, studentId: r.studentId, status: r.status, note: r.note } })
     })
     return NextResponse.json({ ok: true, submittedAt: new Date().toISOString() })
   } catch { return NextResponse.json({ error: "Gagal menyimpan absensi" }, { status: 400 }) }
