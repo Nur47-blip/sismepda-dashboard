@@ -1,8 +1,10 @@
-import { AlertTriangle, CheckCircle2 } from "lucide-react"
+import Link from "next/link"
+import { AlertTriangle, CheckCircle2, ClipboardPenLine } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ClassRecord } from "@/lib/dashboard-data"
 
-export function ClassesNotInput({ records }: { records: ClassRecord[] }) {
+export function ClassesNotInput({ records, date }: { records: ClassRecord[]; date: string }) {
   const pending = records.filter((c) => !c.submitted)
 
   return (
@@ -45,6 +47,14 @@ export function ClassesNotInput({ records }: { records: ClassRecord[] }) {
                     Wali: {c.homeroom} · {c.totalStudents} siswa
                   </p>
                 </div>
+                <Button
+                  size="sm"
+                  className="shrink-0"
+                  render={<Link href={`/absensi/input?date=${date}&classId=${encodeURIComponent(c.id)}`} />}
+                >
+                  <ClipboardPenLine className="size-4" />
+                  Input
+                </Button>
               </li>
             ))}
           </ul>

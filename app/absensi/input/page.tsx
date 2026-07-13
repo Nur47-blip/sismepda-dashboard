@@ -53,6 +53,7 @@ function emptyCounts(): Record<InputStatus, number> {
 export default function AbsensiInputPage() {
   const [date, setDate] = useState(localDateValue())
   const [dateReady, setDateReady] = useState(false)
+  const [requestedClass, setRequestedClass] = useState("")
   const [selectedClass, setSelectedClass] = useState("")
   const [classes, setClasses] = useState<ApiClass[]>([])
   const [holiday, setHoliday] = useState<{ id: string; name: string } | null>(null)
@@ -72,12 +73,41 @@ export default function AbsensiInputPage() {
   const [savedAt, setSavedAt] = useState<string | null>(null)
 
   useEffect(() => {
-    const requestedDate = new URLSearchParams(window.location.search).get("date")
+    const params = new URLSearchParams(window.location.search)
+    const requestedDate = params.get("date")
     if (requestedDate) setDate(localDateValue(parseDateValue(requestedDate)))
+    setRequestedClass(params.get("classId") ?? "")
     setDateReady(true)
   }, [])
   const dateLabel = formatLongDate(date)
-  useEffect(() => { if (!dateReady) return; fetch(`/api/attendance?date=${date}`).then((r) => r.json()).then((data) => { setClasses(data.classes); setHoliday(data.holiday); setSelectedClass(""); setStatuses({}); setNotes({}); setHasSaved(false); setLastSaved(null) }).catch(() => toast.error("Gagal memuat kelas")) }, [date, dateReady])
+  useEffect(() => {
+    if (!dateReady) return
+    fetch(`/api/attendance?date=${date}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const requested = data.classes.find((c: ApiClass) => c.id === requestedClass)
+        const saved = requested?.attendanceDays[0]?.attendances ?? []
+        const nextStatuses: Record<string, InputStatus> = {}
+        const nextNotes: Record<string, string> = {}
+
+        for (const student of requested?.students ?? []) {
+          const record = saved.find((item: ApiClass["attendanceDays"][number]["attendances"][number]) => item.studentId === student.id)
+          nextStatuses[student.id] = (record?.status.toLowerCase() as InputStatus) ?? "belum"
+          nextNotes[student.id] = record?.note ?? ""
+        }
+
+        setClasses(data.classes)
+        setHoliday(data.holiday)
+        setSelectedClass(requested?.id ?? "")
+        setStatuses(nextStatuses)
+        setNotes(nextNotes)
+        setHasSaved(Boolean(requested?.attendanceDays.length))
+        setLastSaved(requested?.attendanceDays[0]?.updatedAt
+          ? { time: formatJam(requested.attendanceDays[0].updatedAt), by: requested.homeroomUser?.name ?? "Admin" }
+          : null)
+      })
+      .catch(() => toast.error("Gagal memuat kelas"))
+  }, [date, dateReady, requestedClass])
   const selected = classes.find((c) => c.id === selectedClass)
   const classOption = selected ? { id: selected.id, name: selected.name, total: selected.students.length, homeroom: selected.homeroomUser?.name ?? "Admin", submitted: selected.attendanceDays.length > 0, submittedAt: selected.attendanceDays[0]?.updatedAt ?? null } : undefined
   const roster = useMemo(() => (selected?.students ?? []).map((s, i) => ({ ...s, no: i + 1 })), [selected])

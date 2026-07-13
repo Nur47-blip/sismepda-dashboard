@@ -84,7 +84,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-4">
                   <ClassRecapCard records={records} />
                   <WeeklyTrend data={weeklyTrend} />
-                  <ClassesNotInput records={records} />
+                  <ClassesNotInput records={records} date={date} />
                 </div>
               </div>
 
