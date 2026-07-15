@@ -46,6 +46,15 @@ export function previewName(prefix: string, nama: string): string {
   return [p, n].filter(Boolean).join(" ")
 }
 
+export function splitPrefixedName(value: string): { prefix: string; name: string } {
+  const normalized = cleanName(value)
+  const prefix = [...defaultPrefixOptions]
+    .sort((a, b) => b.length - a.length)
+    .find((option) => normalized.toLowerCase().startsWith(`${option.toLowerCase()} `))
+  if (!prefix) return { prefix: "", name: normalized }
+  return { prefix: normalized.slice(0, prefix.length), name: normalized.slice(prefix.length).trim() }
+}
+
 // ---------- Validasi form ----------
 
 export type GuruErrors = {

@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PrefixCombobox } from "@/components/guru/prefix-combobox"
+import { defaultPrefixOptions, previewName, splitPrefixedName } from "@/lib/guru-input"
 import { MAX_PROFILE_PHOTO_BYTES, PROFILE_PHOTO_TYPES } from "@/lib/profile"
 
 export type ProfileData = {
@@ -40,9 +42,12 @@ async function readResponse<T>(response: Response): Promise<T> {
 }
 
 export function ProfileManager({ initialProfile }: { initialProfile: ProfileData }) {
+  const initialName = splitPrefixedName(initialProfile.name)
   const { update: updateSession } = useSession()
   const [profile, setProfile] = useState(initialProfile)
-  const [name, setName] = useState(initialProfile.name)
+  const [salutation, setSalutation] = useState(initialName.prefix)
+  const [salutationOptions, setSalutationOptions] = useState<string[]>(defaultPrefixOptions)
+  const [name, setName] = useState(initialName.name)
   const [nip, setNip] = useState(initialProfile.nip ?? "")
   const [email, setEmail] = useState(initialProfile.email ?? "")
   const [phone, setPhone] = useState(initialProfile.phone ?? "")
@@ -133,6 +138,11 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
       toast.error("Minimal salah satu NIP atau email wajib diisi")
       return
     }
+    const displayName = previewName(salutation, name)
+    if (displayName.length > 100) {
+      toast.error("Gabungan sapaan dan nama maksimal 100 karakter")
+      return
+    }
     if (identifierChanged && !currentPassword) {
       toast.error("Masukkan password saat ini untuk mengubah email atau NIP")
       return
@@ -144,15 +154,17 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
+          name: displayName,
           nip: nip.trim(),
           email: email.trim(),
           phone: phone.replace(/[\s-]/g, ""),
           currentPassword: identifierChanged ? currentPassword : undefined,
         }),
       }))
+      const updatedName = splitPrefixedName(updated.name)
       setProfile(updated)
-      setName(updated.name)
+      setSalutation(updatedName.prefix)
+      setName(updatedName.name)
       setNip(updated.nip ?? "")
       setEmail(updated.email ?? "")
       setPhone(updated.phone ?? "")
@@ -207,6 +219,22 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
           <CardContent>
             <form className="space-y-5" onSubmit={saveProfile}>
               <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="profile-salutation">Sapaan</Label>
+                  <PrefixCombobox
+                    id="profile-salutation"
+                    value={salutation}
+                    options={salutationOptions}
+                    onChange={setSalutation}
+                    onAddOption={(value) => setSalutationOptions((current) =>
+                      current.some((option) => option.toLowerCase() === value.toLowerCase())
+                        ? current
+                        : [...current, value]
+                    )}
+                    placeholder="Pilih atau masukkan sapaan"
+                  />
+                  <p className="text-xs text-muted-foreground">Opsional, misalnya Bpk., Ibu, atau Dr.</p>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="profile-name">Nama Lengkap</Label>
                   <Input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={100} autoComplete="name" required />
@@ -283,7 +311,7 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
               <AvatarFallback className="bg-primary/10 text-xl font-semibold text-primary">{initials}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold">{name || profile.name}</p>
+              <p className="font-semibold">{previewName(salutation, name) || profile.name}</p>
               <Badge variant="secondary" className="mt-1">{profile.role === "ADMIN" ? "Administrator" : "Guru"}</Badge>
             </div>
           </div>
