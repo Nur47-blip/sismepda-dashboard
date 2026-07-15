@@ -23,6 +23,9 @@ type DashboardHeaderProps = {
 
 export function DashboardHeader({ selectedClass, onClassChange, classes, date, onDateChange }: DashboardHeaderProps) {
   const classOptions = [{ value: "all", label: "Semua Kelas" }, ...classes.map((c) => ({ value: c.id, label: c.name }))]
+  const attendanceHref = selectedClass === "all"
+    ? `/absensi/input?date=${encodeURIComponent(date)}`
+    : `/absensi/input?date=${encodeURIComponent(date)}&classId=${encodeURIComponent(selectedClass)}`
   return (
     <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-start gap-3">
@@ -60,7 +63,7 @@ export function DashboardHeader({ selectedClass, onClassChange, classes, date, o
           </SelectContent>
         </Select>
 
-        <Button className="shadow-sm" render={<Link href={`/absensi/input?date=${date}`} />}>
+        <Button className="shadow-sm" render={<Link href={attendanceHref} />}>
           <Plus className="size-4" />
           Input Absensi
         </Button>
