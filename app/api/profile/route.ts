@@ -66,13 +66,10 @@ export async function PATCH(request: Request) {
     const nip = body.nip || null
     const phone = body.phone || null
 
-    if (existing.role === "GURU" && !nip) {
-      return NextResponse.json({ error: "NIP wajib diisi untuk akun guru", code: "NIP_REQUIRED" }, { status: 400 })
-    }
     const identifierChanged = email !== existing.email?.toLowerCase() || nip !== existing.nip
-    if (identifierChanged && !email && !nip) {
+    if (!email && !nip) {
       return NextResponse.json(
-        { error: "Email atau NIP tidak boleh dihapus seluruhnya karena diperlukan untuk login", code: "IDENTIFIER_REQUIRED" },
+        { error: "Minimal salah satu NIP atau email wajib diisi", code: "IDENTIFIER_REQUIRED" },
         { status: 400 },
       )
     }

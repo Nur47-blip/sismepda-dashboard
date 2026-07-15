@@ -34,13 +34,20 @@ import {
   previewName,
   sanitizeNip,
   validateGuru,
+  type RegisteredGuruIdentifiers,
   type GuruErrors,
 } from "@/lib/guru-input"
 
 export function GuruInputForm() {
-  const [registeredNip, setRegisteredNip] = useState<Record<string, string>>({})
-  useEffect(() => { fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegisteredNip(Object.fromEntries(teachers.filter((teacher: { nip: string | null }) => teacher.nip).map((teacher: { nip: string; name: string }) => [teacher.nip, teacher.name])))) }, [])
+  const [registered, setRegistered] = useState<RegisteredGuruIdentifiers>({ nip: {}, email: {} })
+  useEffect(() => {
+    fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegistered({
+      nip: Object.fromEntries(teachers.filter((teacher: { nip: string | null }) => teacher.nip).map((teacher: { nip: string; name: string }) => [teacher.nip, teacher.name])),
+      email: Object.fromEntries(teachers.filter((teacher: { email: string | null }) => teacher.email).map((teacher: { email: string; name: string }) => [teacher.email.toLowerCase(), teacher.name])),
+    }))
+  }, [])
   const [nip, setNip] = useState("")
+  const [email, setEmail] = useState("")
   const [prefix, setPrefix] = useState("")
   const [prefixOptions, setPrefixOptions] = useState<string[]>(defaultPrefixOptions)
   const [nama, setNama] = useState("")
@@ -58,14 +65,15 @@ export function GuruInputForm() {
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successName, setSuccessName] = useState<string | null>(null)
-  const [duplicateInfo, setDuplicateInfo] = useState<{ nip: string; nama: string } | null>(null)
+  const [duplicateInfo, setDuplicateInfo] = useState<{ label: "NIP" | "Email"; value: string; nama: string } | null>(null)
 
   const nipRef = useRef<HTMLInputElement>(null)
 
-  const values = { nip, nama, telepon, password, konfirmasi }
-  const liveErrors = touched ? validateGuru(values, registeredNip) : {}
+  const values = { nip, email, nama, telepon, password, konfirmasi }
+  const liveErrors = touched ? validateGuru(values, registered) : {}
 
   const nipError = touched ? errors.nip ?? liveErrors.nip : undefined
+  const emailError = touched ? errors.email ?? liveErrors.email : undefined
   const namaError = touched ? errors.nama ?? liveErrors.nama : undefined
   const teleponError = touched ? errors.telepon ?? liveErrors.telepon : undefined
   const passwordError = touched ? errors.password ?? liveErrors.password : undefined
@@ -75,12 +83,16 @@ export function GuruInputForm() {
 
   function attemptSave(mode: "single" | "again") {
     setTouched(true)
-    const validation = validateGuru(values, registeredNip)
+    const validation = validateGuru(values, registered)
     setErrors(validation)
 
     if (validation.nip === "NIP sudah terdaftar") {
-      const existing = registeredNip[nip.trim()] ?? "guru lain"
-      setDuplicateInfo({ nip: nip.trim(), nama: existing })
+      setDuplicateInfo({ label: "NIP", value: nip.trim(), nama: registered.nip[nip.trim()] ?? "guru lain" })
+      return
+    }
+    if (validation.email === "Email sudah terdaftar") {
+      const normalizedEmail = email.trim().toLowerCase()
+      setDuplicateInfo({ label: "Email", value: normalizedEmail, nama: registered.email[normalizedEmail] ?? "guru lain" })
       return
     }
 
@@ -98,10 +110,10 @@ export function GuruInputForm() {
 
     try {
       const finalName = previewName(prefix, nama)
-      const response = await fetch("/api/admin/teachers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nip: nip.trim(), name: finalName, phone: normalizePhone(telepon), password }) })
+      const response = await fetch("/api/admin/teachers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nip: nip.trim(), email: email.trim(), name: finalName, phone: normalizePhone(telepon), password }) })
       if (!response.ok) {
-        if (response.status === 409) setDuplicateInfo({ nip: nip.trim(), nama: "guru lain" })
-        throw new Error("Gagal menyimpan")
+        const data = await response.json() as { error?: string }
+        throw new Error(data.error ?? "Data guru gagal disimpan")
       }
       setSaving(null)
       setPendingMode(null)
@@ -114,11 +126,12 @@ export function GuruInputForm() {
         toast.success("Guru berhasil ditambahkan", { description: finalName })
         window.setTimeout(() => nipRef.current?.focus(), 30)
       }
-    } catch { setSaving(null); toast.error("Data guru gagal disimpan") }
+    } catch (error) { setSaving(null); toast.error(error instanceof Error ? error.message : "Data guru gagal disimpan") }
   }
 
   function resetForm() {
     setNip("")
+    setEmail("")
     setPrefix("")
     setNama("")
     setTelepon("")
@@ -150,11 +163,11 @@ export function GuruInputForm() {
               attemptSave("single")
             }}
           >
-            {/* NIP & Prefix */}
+            {/* Identitas login */}
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="nip">
-                  NIP <span className="text-destructive">*</span>
+                  NIP
                 </Label>
                 <Input
                   id="nip"
@@ -173,10 +186,30 @@ export function GuruInputForm() {
                   id="nip-help"
                   className={cn("text-xs", nipError ? "text-destructive" : "text-muted-foreground")}
                 >
-                  {nipError ?? "Hanya berisi angka. NIP harus unik."}
+                  {nipError ?? "Opsional jika email diisi. Hanya angka dan harus unik."}
                 </p>
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="nama@sekolah.sch.id"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched(true)}
+                  aria-invalid={Boolean(emailError)}
+                />
+                <p className={cn("text-xs", emailError ? "text-destructive" : "text-muted-foreground")}>
+                  {emailError ?? "Opsional jika NIP diisi. Email harus unik."}
+                </p>
+              </div>
+            </div>
+
+            {/* Sapaan, nama & telepon */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="prefix">Prefix / Sapaan</Label>
                 <PrefixCombobox
@@ -193,10 +226,7 @@ export function GuruInputForm() {
                 />
                 <p className="text-xs text-muted-foreground">Opsional. Bisa memilih atau menambah baru.</p>
               </div>
-            </div>
 
-            {/* Nama & Telepon */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="nama">
                   Nama Lengkap <span className="text-destructive">*</span>
@@ -224,7 +254,7 @@ export function GuruInputForm() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="telepon">
-                  Nomor Telepon <span className="text-destructive">*</span>
+                  Nomor Telepon
                 </Label>
                 <Input
                   id="telepon"
@@ -241,7 +271,7 @@ export function GuruInputForm() {
                   <p className="text-xs text-destructive">{teleponError}</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Format Indonesia, mis. 081234567890 atau +6281234567890.
+                    Opsional. Format Indonesia, mis. 081234567890 atau +6281234567890.
                   </p>
                 )}
               </div>
@@ -350,7 +380,11 @@ export function GuruInputForm() {
             <dl className="space-y-1.5">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">NIP</dt>
-                <dd className="font-medium tabular-nums">{nip}</dd>
+                <dd className="font-medium tabular-nums">{nip || "-"}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Email</dt>
+                <dd className="font-medium">{email.trim() || "-"}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Nama</dt>
@@ -358,7 +392,7 @@ export function GuruInputForm() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Telepon</dt>
-                <dd className="font-medium tabular-nums">{normalizePhone(telepon)}</dd>
+                <dd className="font-medium tabular-nums">{normalizePhone(telepon) || "-"}</dd>
               </div>
             </dl>
           </div>
@@ -403,11 +437,11 @@ export function GuruInputForm() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CircleAlert className="size-5 text-[var(--chart-4)]" />
-              NIP sudah terdaftar
+              {duplicateInfo?.label} sudah terdaftar
             </DialogTitle>
             <DialogDescription>
               {duplicateInfo
-                ? `NIP ${duplicateInfo.nip} sudah digunakan oleh ${duplicateInfo.nama}. Data tidak disimpan.`
+                ? `${duplicateInfo.label} ${duplicateInfo.value} sudah digunakan oleh ${duplicateInfo.nama}. Data tidak disimpan.`
                 : null}
             </DialogDescription>
           </DialogHeader>

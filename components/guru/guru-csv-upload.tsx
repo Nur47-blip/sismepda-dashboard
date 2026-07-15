@@ -42,6 +42,7 @@ import {
   previewName,
   type GuruCsvParseResult,
   type GuruCsvRow,
+  type RegisteredGuruIdentifiers,
 } from "@/lib/guru-input"
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -76,8 +77,13 @@ function toneBadge(tone: "valid" | "skip" | "error") {
 }
 
 export function GuruCsvUpload() {
-  const [registeredNip, setRegisteredNip] = useState<Record<string, string>>({})
-  useEffect(() => { fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegisteredNip(Object.fromEntries(teachers.filter((teacher: { nip: string | null }) => teacher.nip).map((teacher: { nip: string; name: string }) => [teacher.nip, teacher.name])))) }, [])
+  const [registered, setRegistered] = useState<RegisteredGuruIdentifiers>({ nip: {}, email: {} })
+  useEffect(() => {
+    fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegistered({
+      nip: Object.fromEntries(teachers.filter((teacher: { nip: string | null }) => teacher.nip).map((teacher: { nip: string; name: string }) => [teacher.nip, teacher.name])),
+      email: Object.fromEntries(teachers.filter((teacher: { email: string | null }) => teacher.email).map((teacher: { email: string; name: string }) => [teacher.email.toLowerCase(), teacher.name])),
+    }))
+  }, [])
   const [dragging, setDragging] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
@@ -138,7 +144,7 @@ export function GuruCsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseGuruCsv(text, registeredNip)
+      const result = parseGuruCsv(text, registered)
       setFileInfo({
         name: file.name,
         size: file.size,
@@ -151,7 +157,7 @@ export function GuruCsvUpload() {
       setReading(false)
     }
     reader.readAsText(file)
-  }, [registeredNip])
+  }, [registered])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -171,7 +177,7 @@ export function GuruCsvUpload() {
     setImporting(true)
     try {
       const validRows = parseResult.rows.filter((r) => r.status === "valid")
-      const response = await fetch("/api/admin/teachers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validRows.map((r) => ({ nip: r.nip, name: previewName(r.sapaan, r.nama), phone: r.telepon, password: r.password }))) })
+      const response = await fetch("/api/admin/teachers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validRows.map((r) => ({ nip: r.nip, email: r.email, name: previewName(r.sapaan, r.nama), phone: r.telepon, password: r.password }))) })
       if (!response.ok) throw new Error()
       setImporting(false)
       setConfirmOpen(false)
@@ -205,6 +211,7 @@ export function GuruCsvUpload() {
               <TableHeader>
                 <TableRow>
                   <TableHead>nip</TableHead>
+                  <TableHead>email</TableHead>
                   <TableHead>sapaan</TableHead>
                   <TableHead>nama_lengkap</TableHead>
                   <TableHead>nomor_telepon</TableHead>
@@ -214,13 +221,15 @@ export function GuruCsvUpload() {
               <TableBody>
                 <TableRow>
                   <TableCell className="font-mono text-xs">199203112018012005</TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
                   <TableCell>Ibu</TableCell>
                   <TableCell>Dewi Lestari</TableCell>
-                  <TableCell className="font-mono text-xs">081234567801</TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
                   <TableCell className="font-mono text-xs">rahasia123</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-mono text-xs">198710222014031006</TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
+                  <TableCell className="text-xs">rudi.hartono@sekolah.sch.id</TableCell>
                   <TableCell>Bpk.</TableCell>
                   <TableCell>Rudi Hartono</TableCell>
                   <TableCell className="font-mono text-xs">081234567802</TableCell>
@@ -233,11 +242,11 @@ export function GuruCsvUpload() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <ul className="space-y-1 text-xs text-muted-foreground">
               <li>• Jangan mengubah nama header kolom.</li>
-              <li>• NIP wajib berisi angka dan bersifat unik.</li>
+              <li>• Minimal salah satu NIP atau email wajib diisi dan harus unik.</li>
               <li>• Atur kolom NIP sebagai teks bila diedit di Excel agar nol depan tidak hilang.</li>
-              <li>• Sapaan boleh dikosongkan; nama lengkap, telepon, dan password wajib diisi.</li>
+              <li>• Sapaan dan telepon boleh dikosongkan; nama lengkap dan password wajib diisi.</li>
               <li>• Password minimal 8 karakter.</li>
-              <li>• NIP yang sudah terdaftar akan dilewati, data lama tidak ditimpa.</li>
+              <li>• NIP atau email yang sudah terdaftar akan dilewati, data lama tidak ditimpa.</li>
             </ul>
             <Button variant="outline" className="shrink-0" onClick={handleDownloadTemplate}>
               <Download className="size-4" />
@@ -342,7 +351,7 @@ export function GuruCsvUpload() {
             <div>
               <p className="font-medium">Header CSV tidak sesuai</p>
               <p className="text-destructive/80">
-                Pastikan baris pertama berisi kolom: nip, sapaan, nama_lengkap, nomor_telepon,
+                Pastikan baris pertama berisi kolom: nip, email, sapaan, nama_lengkap, nomor_telepon,
                 password.
               </p>
             </div>
@@ -371,7 +380,7 @@ export function GuruCsvUpload() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <SummaryStat label="Data valid" value={parseResult.valid} tone="valid" />
-              <SummaryStat label="NIP sudah terdaftar" value={parseResult.duplicateDb} tone="skip" />
+              <SummaryStat label="NIP/email sudah terdaftar" value={parseResult.duplicateDb} tone="skip" />
               <SummaryStat label="Data bermasalah" value={parseResult.problem} tone="error" />
               <SummaryStat label="Total baris" value={parseResult.total} tone="total" />
             </div>
@@ -382,6 +391,7 @@ export function GuruCsvUpload() {
                   <TableRow>
                     <TableHead className="w-16">Baris</TableHead>
                     <TableHead>NIP</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Nama Guru</TableHead>
                     <TableHead>Telepon</TableHead>
                     <TableHead>Status</TableHead>
@@ -473,7 +483,7 @@ export function GuruCsvUpload() {
                 <span className="font-semibold text-[var(--chart-1)]">{importResult.added}</span>
               </li>
               <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Dilewati (NIP sudah terdaftar)</span>
+                <span className="text-muted-foreground">Dilewati (NIP/email sudah terdaftar)</span>
                 <span className="font-semibold text-[var(--chart-4)]">{importResult.skipped}</span>
               </li>
               <li className="flex items-center justify-between">
@@ -542,6 +552,9 @@ function PreviewRow({ row }: { row: GuruCsvRow }) {
       <TableCell className="text-muted-foreground tabular-nums">{row.baris}</TableCell>
       <TableCell className="font-mono text-xs">
         {row.nip || <span className="italic text-muted-foreground">kosong</span>}
+      </TableCell>
+      <TableCell className="text-xs">
+        {row.email || <span className="italic text-muted-foreground">kosong</span>}
       </TableCell>
       <TableCell>
         {displayName || <span className="italic text-muted-foreground">kosong</span>}

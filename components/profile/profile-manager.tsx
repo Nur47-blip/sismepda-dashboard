@@ -129,12 +129,8 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
       toast.error("Nama lengkap wajib diisi")
       return
     }
-    if (profile.role === "GURU" && !nip.trim()) {
-      toast.error("NIP wajib diisi untuk akun guru")
-      return
-    }
-    if (identifierChanged && !nip.trim() && !email.trim()) {
-      toast.error("Email atau NIP tidak boleh dihapus seluruhnya karena diperlukan untuk login")
+    if (!nip.trim() && !email.trim()) {
+      toast.error("Minimal salah satu NIP atau email wajib diisi")
       return
     }
     if (identifierChanged && !currentPassword) {
@@ -221,14 +217,14 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
                   <p className="text-xs text-muted-foreground">Opsional, 7–15 digit.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-nip">NIP {profile.role === "GURU" ? <span className="text-destructive">*</span> : null}</Label>
+                  <Label htmlFor="profile-nip">NIP</Label>
                   <Input id="profile-nip" value={nip} onChange={(event) => setNip(event.target.value.replace(/\D/g, ""))} inputMode="numeric" autoComplete="username" maxLength={30} />
-                  <p className="text-xs text-muted-foreground">Hanya angka dan harus unik.</p>
+                  <p className="text-xs text-muted-foreground">Opsional jika email diisi. Hanya angka dan harus unik.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="profile-email">Email</Label>
                   <Input id="profile-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" maxLength={254} placeholder="nama@sekolah.sch.id" />
-                  <p className="text-xs text-muted-foreground">Opsional untuk guru; jika diisi, email dapat dipakai untuk login.</p>
+                  <p className="text-xs text-muted-foreground">Opsional jika NIP diisi. Email dapat dipakai untuk login.</p>
                 </div>
               </div>
 

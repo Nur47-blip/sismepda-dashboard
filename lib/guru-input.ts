@@ -50,6 +50,7 @@ export function previewName(prefix: string, nama: string): string {
 
 export type GuruErrors = {
   nip?: string
+  email?: string
   nama?: string
   telepon?: string
   password?: string
@@ -58,31 +59,38 @@ export type GuruErrors = {
 
 export function validateGuru(values: {
   nip: string
+  email: string
   nama: string
   telepon: string
   password: string
   konfirmasi: string
-}, registeredNip: Record<string, string> = {}): GuruErrors {
+}, registered: RegisteredGuruIdentifiers = EMPTY_REGISTERED_GURU): GuruErrors {
   const errors: GuruErrors = {}
   const nip = values.nip.trim()
+  const email = values.email.trim().toLowerCase()
   const nama = values.nama.trim()
   const telepon = values.telepon.trim()
 
-  if (!nip) {
-    errors.nip = "NIP wajib diisi"
-  } else if (!isValidNipFormat(nip)) {
+  if (!nip && !email) {
+    errors.nip = "Isi minimal salah satu NIP atau email"
+    errors.email = "Isi minimal salah satu NIP atau email"
+  } else if (nip && !isValidNipFormat(nip)) {
     errors.nip = "NIP hanya boleh berisi angka"
-  } else if (registeredNip[nip]) {
+  } else if (nip && registered.nip[nip]) {
     errors.nip = "NIP sudah terdaftar"
+  }
+
+  if (email && !isValidEmail(email)) {
+    errors.email = "Format email tidak valid"
+  } else if (email && registered.email[email]) {
+    errors.email = "Email sudah terdaftar"
   }
 
   if (!nama) {
     errors.nama = "Nama lengkap wajib diisi"
   }
 
-  if (!telepon) {
-    errors.telepon = "Nomor telepon wajib diisi"
-  } else if (!isValidPhone(telepon)) {
+  if (telepon && !isValidPhone(telepon)) {
     errors.telepon = "Format nomor telepon tidak valid"
   }
 
@@ -101,22 +109,38 @@ export function validateGuru(values: {
 
 // ---------- Impor CSV ----------
 
+export type RegisteredGuruIdentifiers = {
+  nip: Record<string, string>
+  email: Record<string, string>
+}
+
+export const EMPTY_REGISTERED_GURU: RegisteredGuruIdentifiers = { nip: {}, email: {} }
+
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
 export const GURU_CSV_HEADERS = [
   "nip",
+  "email",
   "sapaan",
   "nama_lengkap",
   "nomor_telepon",
   "password",
 ] as const
 
+const LEGACY_GURU_CSV_HEADERS = ["nip", "sapaan", "nama_lengkap", "nomor_telepon", "password"] as const
+
 export type GuruCsvRowStatus =
   | "valid"
   | "nip_terdaftar"
-  | "nip_kosong"
+  | "identifier_kosong"
   | "nip_tidak_valid"
   | "nip_duplikat_file"
+  | "email_terdaftar"
+  | "email_tidak_valid"
+  | "email_duplikat_file"
   | "nama_kosong"
-  | "telepon_kosong"
   | "telepon_tidak_valid"
   | "password_kosong"
   | "password_lemah"
@@ -124,6 +148,7 @@ export type GuruCsvRowStatus =
 export type GuruCsvRow = {
   baris: number
   nip: string
+  email: string
   sapaan: string
   nama: string
   telepon: string
@@ -146,7 +171,7 @@ function splitCsvLine(line: string): string[] {
   return line.split(",").map((c) => c.trim())
 }
 
-export function parseGuruCsv(text: string, registeredNip: Record<string, string> = {}): GuruCsvParseResult {
+export function parseGuruCsv(text: string, registered: RegisteredGuruIdentifiers = EMPTY_REGISTERED_GURU): GuruCsvParseResult {
   const lines = text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -158,11 +183,10 @@ export function parseGuruCsv(text: string, registeredNip: Record<string, string>
   }
 
   const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase())
-  const headerMatches =
-    header.length >= 5 &&
-    GURU_CSV_HEADERS.every((h, i) => header[i] === h)
+  const headerMatches = header.length >= GURU_CSV_HEADERS.length && GURU_CSV_HEADERS.every((h, i) => header[i] === h)
+  const legacyHeaderMatches = header.length >= LEGACY_GURU_CSV_HEADERS.length && LEGACY_GURU_CSV_HEADERS.every((h, i) => header[i] === h)
 
-  if (!headerMatches) {
+  if (!headerMatches && !legacyHeaderMatches) {
     return { ok: false, error: "header", headerFound: lines[0] }
   }
 
@@ -171,37 +195,46 @@ export function parseGuruCsv(text: string, registeredNip: Record<string, string>
     return { ok: false, error: "empty" }
   }
 
-  // Hitung kemunculan NIP untuk deteksi duplikat di dalam file.
+  // Hitung kemunculan identitas untuk deteksi duplikat di dalam file.
   const nipSeen = new Map<string, number>()
+  const emailSeen = new Map<string, number>()
   for (const line of dataLines) {
     const cells = splitCsvLine(line)
     const nip = (cells[0] ?? "").trim()
+    const email = headerMatches ? (cells[1] ?? "").trim().toLowerCase() : ""
     if (nip) nipSeen.set(nip, (nipSeen.get(nip) ?? 0) + 1)
+    if (email) emailSeen.set(email, (emailSeen.get(email) ?? 0) + 1)
   }
 
   const rows: GuruCsvRow[] = dataLines.map((line, index) => {
     const cells = splitCsvLine(line)
     const nip = (cells[0] ?? "").trim()
-    const sapaan = (cells[1] ?? "").trim()
-    const nama = (cells[2] ?? "").trim()
-    const telepon = (cells[3] ?? "").trim()
-    const password = (cells[4] ?? "").trim()
+    const email = headerMatches ? (cells[1] ?? "").trim().toLowerCase() : ""
+    const offset = headerMatches ? 1 : 0
+    const sapaan = (cells[1 + offset] ?? "").trim()
+    const nama = (cells[2 + offset] ?? "").trim()
+    const telepon = (cells[3 + offset] ?? "").trim()
+    const password = (cells[4 + offset] ?? "").trim()
     const baris = index + 2 // baris 1 adalah header
 
     let status: GuruCsvRowStatus = "valid"
-    if (!nip) {
-      status = "nip_kosong"
-    } else if (!isValidNipFormat(nip)) {
+    if (!nip && !email) {
+      status = "identifier_kosong"
+    } else if (nip && !isValidNipFormat(nip)) {
       status = "nip_tidak_valid"
-    } else if ((nipSeen.get(nip) ?? 0) > 1) {
+    } else if (nip && (nipSeen.get(nip) ?? 0) > 1) {
       status = "nip_duplikat_file"
-    } else if (registeredNip[nip]) {
+    } else if (nip && registered.nip[nip]) {
       status = "nip_terdaftar"
+    } else if (email && !isValidEmail(email)) {
+      status = "email_tidak_valid"
+    } else if (email && (emailSeen.get(email) ?? 0) > 1) {
+      status = "email_duplikat_file"
+    } else if (email && registered.email[email]) {
+      status = "email_terdaftar"
     } else if (!nama) {
       status = "nama_kosong"
-    } else if (!telepon) {
-      status = "telepon_kosong"
-    } else if (!isValidPhone(telepon)) {
+    } else if (telepon && !isValidPhone(telepon)) {
       status = "telepon_tidak_valid"
     } else if (!password) {
       status = "password_kosong"
@@ -209,11 +242,11 @@ export function parseGuruCsv(text: string, registeredNip: Record<string, string>
       status = "password_lemah"
     }
 
-    return { baris, nip, sapaan, nama, telepon, password, status }
+    return { baris, nip, email, sapaan, nama, telepon, password, status }
   })
 
   const valid = rows.filter((r) => r.status === "valid").length
-  const duplicateDb = rows.filter((r) => r.status === "nip_terdaftar").length
+  const duplicateDb = rows.filter((r) => r.status === "nip_terdaftar" || r.status === "email_terdaftar").length
   const problem = rows.length - valid - duplicateDb
 
   return {
@@ -232,17 +265,19 @@ export const guruCsvStatusMeta: Record<
 > = {
   valid: { label: "Valid", tone: "valid" },
   nip_terdaftar: { label: "NIP sudah terdaftar", tone: "skip" },
-  nip_kosong: { label: "NIP kosong", tone: "error" },
+  identifier_kosong: { label: "NIP/email kosong", tone: "error" },
   nip_tidak_valid: { label: "NIP tidak valid", tone: "error" },
   nip_duplikat_file: { label: "NIP duplikat di file", tone: "error" },
+  email_terdaftar: { label: "Email sudah terdaftar", tone: "skip" },
+  email_tidak_valid: { label: "Email tidak valid", tone: "error" },
+  email_duplikat_file: { label: "Email duplikat di file", tone: "error" },
   nama_kosong: { label: "Nama lengkap kosong", tone: "error" },
-  telepon_kosong: { label: "Nomor telepon kosong", tone: "error" },
   telepon_tidak_valid: { label: "Nomor telepon tidak valid", tone: "error" },
   password_kosong: { label: "Password kosong", tone: "error" },
   password_lemah: { label: "Password kurang dari 8 karakter", tone: "error" },
 }
 
-export const GURU_CSV_TEMPLATE = `nip,sapaan,nama_lengkap,nomor_telepon,password
-199203112018012005,Ibu,Dewi Lestari,081234567801,rahasia123
-198710222014031006,Bpk.,Rudi Hartono,081234567802,gurubaru88
-199508162020122007,Ustazah,Siti Aminah,081234567803,sekolah2024`
+export const GURU_CSV_TEMPLATE = `nip,email,sapaan,nama_lengkap,nomor_telepon,password
+199203112018012005,,Ibu,Dewi Lestari,,rahasia123
+,rudi.hartono@sekolah.sch.id,Bpk.,Rudi Hartono,081234567802,gurubaru88
+199508162020122007,siti.aminah@sekolah.sch.id,Ustazah,Siti Aminah,,sekolah2024`
