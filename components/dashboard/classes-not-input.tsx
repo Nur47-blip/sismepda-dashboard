@@ -56,7 +56,7 @@ export function ClassesNotInput({ records, date }: { records: ClassRecord[]; dat
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-foreground">Kelas {group.grade}</h3>
                   <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground tabular-nums shadow-sm">
-                    {group.records.length}
+                    {`${group.records.length} Kelas`}
                   </span>
                 </div>
 
