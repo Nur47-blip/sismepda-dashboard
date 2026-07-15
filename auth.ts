@@ -72,6 +72,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = token.id as string
       session.user.role = token.role as "ADMIN" | "GURU"
       session.user.nip = token.nip as string | null
+      Object.assign(session.user, {
+        name: token.name ?? null,
+        email: token.email ?? null,
+        image: token.picture ?? null,
+      })
       return session
     },
     authorized({ auth, request }) {

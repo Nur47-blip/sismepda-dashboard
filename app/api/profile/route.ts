@@ -69,11 +69,13 @@ export async function PATCH(request: Request) {
     if (existing.role === "GURU" && !nip) {
       return NextResponse.json({ error: "NIP wajib diisi untuk akun guru", code: "NIP_REQUIRED" }, { status: 400 })
     }
-    if (!email && !nip) {
-      return NextResponse.json({ error: "Email atau NIP wajib tersedia untuk login", code: "IDENTIFIER_REQUIRED" }, { status: 400 })
-    }
-
     const identifierChanged = email !== existing.email?.toLowerCase() || nip !== existing.nip
+    if (identifierChanged && !email && !nip) {
+      return NextResponse.json(
+        { error: "Email atau NIP tidak boleh dihapus seluruhnya karena diperlukan untuk login", code: "IDENTIFIER_REQUIRED" },
+        { status: 400 },
+      )
+    }
     if (identifierChanged) {
       if (!body.currentPassword) {
         return NextResponse.json(

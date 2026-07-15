@@ -133,8 +133,8 @@ export function ProfileManager({ initialProfile }: { initialProfile: ProfileData
       toast.error("NIP wajib diisi untuk akun guru")
       return
     }
-    if (!nip.trim() && !email.trim()) {
-      toast.error("Email atau NIP wajib tersedia untuk login")
+    if (identifierChanged && !nip.trim() && !email.trim()) {
+      toast.error("Email atau NIP tidak boleh dihapus seluruhnya karena diperlukan untuk login")
       return
     }
     if (identifierChanged && !currentPassword) {

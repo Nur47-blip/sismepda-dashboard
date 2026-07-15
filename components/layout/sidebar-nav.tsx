@@ -64,7 +64,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               <p className="truncate text-xs text-muted-foreground">{role === "ADMIN" ? "Administrator" : "Guru"}</p>
             </div>
           </Link>
-          <button onClick={() => signOut({ redirectTo: "/login" })} className="ml-auto text-muted-foreground hover:text-destructive" aria-label="Keluar"><LogOut className="size-4" /></button>
+          <button onClick={() => signOut({ redirectTo: "/login" })} className="ml-auto cursor-pointer text-muted-foreground hover:text-destructive" aria-label="Keluar"><LogOut className="size-4" /></button>
         </div>
       </div>
     </div>
