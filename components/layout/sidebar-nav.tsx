@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { navItems } from "@/lib/nav"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -51,13 +52,18 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mt-auto p-3">
         <div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-card px-3 py-3 shadow-sm">
-          <span className="flex size-9 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">
-            {(session?.user.name ?? "U").split(" ").map((v) => v[0]).join("").slice(0, 2).toUpperCase()}
-          </span>
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold text-sidebar-foreground">{session?.user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{role === "ADMIN" ? "Administrator" : "Guru"}</p>
-          </div>
+          <Link href="/profil" onClick={onNavigate} aria-label="Buka profil saya" className="contents">
+            <Avatar className="size-9">
+              {session?.user.image ? <AvatarImage src={session.user.image} alt="Foto profil" /> : null}
+              <AvatarFallback className="bg-primary/12 font-semibold text-primary">
+                {(session?.user.name ?? "U").split(" ").map((v) => v[0]).join("").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-sm font-semibold text-sidebar-foreground">{session?.user.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{role === "ADMIN" ? "Administrator" : "Guru"}</p>
+            </div>
+          </Link>
           <button onClick={() => signOut({ redirectTo: "/login" })} className="ml-auto text-muted-foreground hover:text-destructive" aria-label="Keluar"><LogOut className="size-4" /></button>
         </div>
       </div>

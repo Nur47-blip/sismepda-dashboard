@@ -9,6 +9,7 @@ import {
   Building2,
   BookOpen,
   Users,
+  CircleUserRound,
   Settings,
   type LucideIcon,
 } from "lucide-react"
@@ -90,6 +91,13 @@ export const navItems: NavItem[] = [
     href: "/rekap-siswa",
     icon: Users,
     description: "Riwayat kehadiran per siswa",
+    roles: ["ADMIN", "GURU"],
+  },
+  {
+    title: "Profil Saya",
+    href: "/profil",
+    icon: CircleUserRound,
+    description: "Kelola data diri dan keamanan akun",
     roles: ["ADMIN", "GURU"],
   },
   {

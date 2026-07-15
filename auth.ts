@@ -14,20 +14,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(raw, request) {
         const parsed = z.object({ identifier: z.string().min(1), password: z.string().min(1) }).safeParse(raw)
         if (!parsed.success) return null
-        const identifier = parsed.data.identifier.trim().toLowerCase()
+        const rawIdentifier = parsed.data.identifier.trim()
+        const identifier = rawIdentifier.toLowerCase()
         if (!consumeLoginAttempt(request, identifier)) return null
         const user = await prisma.user.findFirst({
-          where: { active: true, OR: [{ email: identifier }, { nip: parsed.data.identifier.trim() }] },
+          where: {
+            active: true,
+            OR: [{ email: { equals: identifier, mode: "insensitive" } }, { nip: rawIdentifier }],
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            nip: true,
+            role: true,
+            passwordHash: true,
+            photoUpdatedAt: true,
+          },
         })
         if (!user || !(await compare(parsed.data.password, user.passwordHash))) return null
         clearLoginFailures(request, identifier)
-        return { id: user.id, name: user.name, email: user.email, role: user.role, nip: user.nip }
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          nip: user.nip,
+          image: user.photoUpdatedAt ? `/api/profile/photo?v=${user.photoUpdatedAt.getTime()}` : null,
+        }
       },
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
-      if (user) { token.id = user.id; token.role = user.role; token.nip = user.nip }
+    async jwt({ token, user, trigger }) {
+      if (user) {
+        token.id = user.id
+        token.role = user.role
+        token.nip = user.nip
+        token.picture = user.image
+      }
+      if (trigger === "update" && token.id) {
+        const current = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { name: true, email: true, nip: true, role: true, active: true, photoUpdatedAt: true },
+        })
+        if (current?.active) {
+          token.name = current.name
+          token.email = current.email
+          token.nip = current.nip
+          token.role = current.role
+          token.picture = current.photoUpdatedAt ? `/api/profile/photo?v=${current.photoUpdatedAt.getTime()}` : null
+        }
+      }
       return token
     },
     session({ session, token }) {
