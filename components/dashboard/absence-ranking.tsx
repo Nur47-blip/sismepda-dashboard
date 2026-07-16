@@ -32,6 +32,8 @@ import { compareClassNames } from "@/lib/class-order"
 
 export type AbsenceRankingRow = {
   id: string
+  nis: string | null
+  nisn: string | null
   name: string
   className: string
   sakit: number
@@ -41,7 +43,7 @@ export type AbsenceRankingRow = {
 }
 
 type StatusKey = "sakit" | "izin" | "alfa" | "dispensasi"
-type SortKey = "rank" | "name" | "className" | StatusKey | "total"
+type SortKey = "rank" | "name" | "nis" | "className" | StatusKey | "total"
 type SortDir = "asc" | "desc" | null
 
 const statusFilters: { key: StatusKey; label: string; badge: string }[] = [
@@ -83,6 +85,8 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
         (s) =>
           q === "" ||
           s.name.toLowerCase().includes(q) ||
+          s.nis?.includes(q) ||
+          s.nisn?.includes(q) ||
           s.className.toLowerCase().includes(q),
       )
       .map((s) => ({ student: s, total: activeKeys.reduce((sum, k) => sum + s[k], 0) }))
@@ -106,6 +110,9 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
       switch (sortKey) {
         case "name":
           cmp = a.student.name.localeCompare(b.student.name, "id")
+          break
+        case "nis":
+          cmp = (a.student.nis ?? "").localeCompare(b.student.nis ?? "", "id", { numeric: true })
           break
         case "className":
           cmp = compareClassNames(a.student.className, b.student.className)
@@ -227,7 +234,7 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
                   setQuery(e.target.value)
                   setPage(1)
                 }}
-                placeholder="Cari nama siswa atau kelas..."
+                placeholder="Cari nama, NIS, NISN, atau kelas..."
                 className="w-full pl-9 sm:w-64"
                 aria-label="Cari nama siswa atau kelas"
               />
@@ -260,6 +267,7 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
               <TableRow className="bg-muted/60 hover:bg-muted/60">
                 <SortHeader column="rank" label="Peringkat" className="w-20" />
                 <SortHeader column="name" label="Nama Siswa" className="min-w-44" />
+                <SortHeader column="nis" label="NIS" />
                 <SortHeader column="className" label="Kelas" />
                 {activeKeys.includes("sakit") && (
                   <SortHeader column="sakit" label="Sakit" className="text-center" />
@@ -279,13 +287,13 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
             <TableBody>
               {noneActive ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
                     Pilih minimal satu jenis ketidakhadiran.
                   </TableCell>
                 </TableRow>
               ) : pageRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <div className="flex flex-col items-center gap-2 py-12 text-center">
                       <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                         <SearchX className="size-6" />
@@ -314,6 +322,9 @@ export function AbsenceRanking({ students }: { students: AbsenceRankingRow[] }) 
                       </TableCell>
                       <TableCell className="font-semibold text-foreground">
                         {row.student.name}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {row.student.nis ?? "-"}
                       </TableCell>
                       <TableCell>
                         <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">

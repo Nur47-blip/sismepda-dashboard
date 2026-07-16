@@ -44,7 +44,7 @@ import {
 } from "@/lib/attendance-input"
 import { formatLongDate, localDateValue, parseDateValue } from "@/lib/date"
 
-type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; name: string }>; attendanceDays: Array<{ submittedAt: string; updatedAt: string; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
+type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; nis: string | null; nisn: string | null; name: string }>; attendanceDays: Array<{ submittedAt: string; updatedAt: string; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
 
 function emptyCounts(): Record<InputStatus, number> {
   return { belum: 0, hadir: 0, sakit: 0, izin: 0, alfa: 0, dispensasi: 0 }

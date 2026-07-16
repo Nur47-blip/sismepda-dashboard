@@ -43,6 +43,7 @@ import {
   parseCsv,
   type CsvParseResult,
   type CsvRow,
+  type RegisteredStudentIdentifiers,
 } from "@/lib/student-input"
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -80,8 +81,8 @@ export function CsvUpload() {
   const [delimiter, setDelimiter] = useState(",")
   const [fileText, setFileText] = useState<string | null>(null)
   const [classOptions, setClassOptions] = useState<string[]>([])
-  const [registeredNisn, setRegisteredNisn] = useState<Record<string, string>>({})
-  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegisteredNisn(Object.fromEntries(data.students.map((student: { nisn: string; name: string }) => [student.nisn, student.name]))) }) }, [])
+  const [registered, setRegistered] = useState<RegisteredStudentIdentifiers>({ nis: {}, nisn: {} })
+  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegistered({ nis: Object.fromEntries(data.students.filter((student: { nis: string | null }) => student.nis).map((student: { nis: string; name: string }) => [student.nis, student.name])), nisn: Object.fromEntries(data.students.filter((student: { nisn: string | null }) => student.nisn).map((student: { nisn: string; name: string }) => [student.nisn, student.name])) }) }) }, [])
   const [dragging, setDragging] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
@@ -120,9 +121,9 @@ export function CsvUpload() {
   const handleDelimiterChange = useCallback((nextDelimiter: string) => {
     setDelimiter(nextDelimiter)
     if (fileText !== null) {
-      setParseResult(parseCsv(fileText, classOptions, registeredNisn, nextDelimiter))
+      setParseResult(parseCsv(fileText, classOptions, registered, nextDelimiter))
     }
-  }, [classOptions, fileText, registeredNisn])
+  }, [classOptions, fileText, registered])
 
   const processFile = useCallback((file: File) => {
     setFileError(null)
@@ -150,7 +151,7 @@ export function CsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseCsv(text, classOptions, registeredNisn, delimiter)
+      const result = parseCsv(text, classOptions, registered, delimiter)
       const rowCount = result.ok ? result.total : 0
       setFileInfo({
         name: file.name,
@@ -166,7 +167,7 @@ export function CsvUpload() {
       void rowCount
     }
     reader.readAsText(file)
-  }, [classOptions, delimiter, registeredNisn])
+  }, [classOptions, delimiter, registered])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -186,7 +187,7 @@ export function CsvUpload() {
     setImporting(true)
     try {
       const validRows = parseResult.rows.filter((r) => r.status === "valid")
-      const response = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validRows.map((r) => ({ nisn: r.nisn, name: r.nama, className: r.kelas }))) })
+      const response = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validRows.map((r) => ({ nis: r.nis, nisn: r.nisn, name: r.nama, className: r.kelas }))) })
       if (!response.ok) throw new Error()
       setImporting(false)
       setConfirmOpen(false)
@@ -224,6 +225,7 @@ export function CsvUpload() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>nis</TableHead>
                   <TableHead>nisn</TableHead>
                   <TableHead>nama_lengkap</TableHead>
                   <TableHead>kelas</TableHead>
@@ -231,16 +233,19 @@ export function CsvUpload() {
               </TableHeader>
               <TableBody>
                 <TableRow>
+                  <TableCell className="font-mono text-xs">1001</TableCell>
                   <TableCell className="font-mono text-xs">0090001111</TableCell>
                   <TableCell>Ahmad Fauzan</TableCell>
                   <TableCell>VII A</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-mono text-xs">0090002222</TableCell>
+                  <TableCell className="font-mono text-xs">1002</TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
                   <TableCell>Aisyah Putri Ramadhani</TableCell>
                   <TableCell>VII A</TableCell>
                 </TableRow>
                 <TableRow>
+                  <TableCell className="text-muted-foreground">-</TableCell>
                   <TableCell className="font-mono text-xs">0090003333</TableCell>
                   <TableCell>Bagas Aditya Pratama</TableCell>
                   <TableCell>VII B</TableCell>
@@ -252,10 +257,10 @@ export function CsvUpload() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <ul className="space-y-1 text-xs text-muted-foreground">
               <li>• Jangan mengubah nama header kolom.</li>
-              <li>• NISN wajib terdiri dari 10 digit angka.</li>
-              <li>• Atur kolom NISN sebagai teks bila diedit di Excel agar nol depan tidak hilang.</li>
+              <li>• Minimal salah satu NIS atau NISN wajib diisi dan harus unik.</li>
+              <li>• Atur kolom NIS/NISN sebagai teks di Excel agar nol depan tidak hilang.</li>
               <li>• Nama lengkap wajib diisi dan kelas harus tersedia di sistem.</li>
-              <li>• NISN yang sudah terdaftar akan dilewati, data lama tidak ditimpa.</li>
+              <li>• NIS atau NISN yang sudah terdaftar akan dilewati, data lama tidak ditimpa.</li>
             </ul>
             <Button variant="outline" className="shrink-0" onClick={handleDownloadTemplate}>
               <Download className="size-4" />
@@ -360,7 +365,7 @@ export function CsvUpload() {
             <div>
               <p className="font-medium">Header CSV tidak sesuai</p>
               <p className="text-destructive/80">
-                Pastikan baris pertama berisi kolom: nisn, nama_lengkap, kelas.
+                Pastikan baris pertama berisi kolom: nis, nisn, nama_lengkap, kelas.
               </p>
             </div>
           </CardContent>
@@ -388,7 +393,7 @@ export function CsvUpload() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <SummaryStat label="Data valid" value={parseResult.valid} tone="valid" />
-              <SummaryStat label="NISN sudah terdaftar" value={parseResult.duplicateDb} tone="skip" />
+              <SummaryStat label="NIS/NISN sudah terdaftar" value={parseResult.duplicateDb} tone="skip" />
               <SummaryStat label="Data bermasalah" value={parseResult.problem} tone="error" />
               <SummaryStat label="Total baris" value={parseResult.total} tone="total" />
             </div>
@@ -398,6 +403,7 @@ export function CsvUpload() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-16">Baris</TableHead>
+                    <TableHead>NIS</TableHead>
                     <TableHead>NISN</TableHead>
                     <TableHead>Nama Lengkap</TableHead>
                     <TableHead className="w-24">Kelas</TableHead>
@@ -490,7 +496,7 @@ export function CsvUpload() {
                 <span className="font-semibold text-[var(--chart-1)]">{importResult.added}</span>
               </li>
               <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Dilewati (NISN sudah terdaftar)</span>
+                <span className="text-muted-foreground">Dilewati (NIS/NISN sudah terdaftar)</span>
                 <span className="font-semibold text-[var(--chart-4)]">{importResult.skipped}</span>
               </li>
               <li className="flex items-center justify-between">
@@ -556,6 +562,9 @@ function PreviewRow({ row }: { row: CsvRow }) {
   return (
     <TableRow>
       <TableCell className="text-muted-foreground tabular-nums">{row.baris}</TableCell>
+      <TableCell className="font-mono text-xs">
+        {row.nis || <span className="text-muted-foreground italic">kosong</span>}
+      </TableCell>
       <TableCell className="font-mono text-xs">
         {row.nisn || <span className="text-muted-foreground italic">kosong</span>}
       </TableCell>

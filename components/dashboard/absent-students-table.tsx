@@ -36,7 +36,7 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-type SortKey = "name" | "className" | "status" | "note" | "total" | "riwayat"
+type SortKey = "name" | "nis" | "className" | "status" | "note" | "total" | "riwayat"
 type SortDir = "asc" | "desc"
 type SortState = { key: SortKey; dir: SortDir } | null
 
@@ -69,7 +69,7 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
     const q = query.trim().toLowerCase()
     if (!q) return checkboxFiltered
     return checkboxFiltered.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.className.toLowerCase().includes(q),
+      (s) => s.name.toLowerCase().includes(q) || s.nis?.includes(q) || s.nisn?.includes(q) || s.className.toLowerCase().includes(q),
     )
   }, [checkboxFiltered, query])
 
@@ -89,6 +89,9 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
       switch (sort.key) {
         case "name":
           cmp = byName(a, b)
+          break
+        case "nis":
+          cmp = (a.nis ?? "").localeCompare(b.nis ?? "", "id", { numeric: true })
           break
         case "className":
           cmp = compareClassNames(a.className, b.className)
@@ -157,7 +160,7 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari nama siswa atau kelas..."
+              placeholder="Cari nama, NIS, NISN, atau kelas..."
               className="h-9 pl-8"
               aria-label="Cari nama siswa atau kelas"
             />
@@ -182,9 +185,10 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
         ) : (
           <>
             <div className="overflow-x-auto">
-              <Table className="min-w-[920px] table-fixed">
+              <Table className="min-w-[1000px] table-fixed">
                 <colgroup>
-                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "19%" }} />
+                  <col style={{ width: "10%" }} />
                   <col style={{ width: "8%" }} />
                   <col style={{ width: "12%" }} />
                   <col style={{ width: "21%" }} />
@@ -194,6 +198,7 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
                 <TableHeader>
                   <TableRow>
                     <SortHead label="Nama Siswa" col="name" sort={sort} onSort={toggleSort} />
+                    <SortHead label="NIS" col="nis" sort={sort} onSort={toggleSort} />
                     <SortHead label="Kelas" col="className" sort={sort} onSort={toggleSort} />
                     <SortHead label="Status" col="status" sort={sort} onSort={toggleSort} />
                     <SortHead label="Keterangan" col="note" sort={sort} onSort={toggleSort} />
@@ -227,6 +232,9 @@ export function AbsentStudentsTable({ students }: { students: AbsentStudent[] })
                               {s.name}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-muted-foreground">
+                          {s.nis ?? "-"}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-muted-foreground">
                           {s.className}

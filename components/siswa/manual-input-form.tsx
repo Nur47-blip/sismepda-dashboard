@@ -28,30 +28,36 @@ import { cn } from "@/lib/utils"
 import {
   validateManual,
   type ManualErrors,
+  type RegisteredStudentIdentifiers,
 } from "@/lib/student-input"
 
 type SavedInfo = { nama: string; kelas: string }
 
 export function ManualInputForm() {
+  const [nis, setNis] = useState("")
   const [nisn, setNisn] = useState("")
   const [nama, setNama] = useState("")
   const [kelas, setKelas] = useState("")
   const [classOptions, setClassOptions] = useState<string[]>([])
-  const [registeredNisn, setRegisteredNisn] = useState<Record<string, string>>({})
+  const [registered, setRegistered] = useState<RegisteredStudentIdentifiers>({ nis: {}, nisn: {} })
 
-  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegisteredNisn(Object.fromEntries(data.students.map((student: { nisn: string; name: string }) => [student.nisn, student.name]))) }) }, [])
+  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegistered({ nis: Object.fromEntries(data.students.filter((student: { nis: string | null }) => student.nis).map((student: { nis: string; name: string }) => [student.nis, student.name])), nisn: Object.fromEntries(data.students.filter((student: { nisn: string | null }) => student.nisn).map((student: { nisn: string; name: string }) => [student.nisn, student.name])) }) }) }, [])
 
   const [touched, setTouched] = useState(false)
   const [errors, setErrors] = useState<ManualErrors>({})
   const [saving, setSaving] = useState<"single" | "again" | null>(null)
 
   const [successInfo, setSuccessInfo] = useState<SavedInfo | null>(null)
-  const [duplicateInfo, setDuplicateInfo] = useState<{ nisn: string; nama: string } | null>(null)
+  const [duplicateInfo, setDuplicateInfo] = useState<{ label: "NIS" | "NISN"; value: string; nama: string } | null>(null)
   const [saveError, setSaveError] = useState(false)
 
-  const nisnRef = useRef<HTMLInputElement>(null)
+  const nisRef = useRef<HTMLInputElement>(null)
 
-  const liveErrors = touched ? validateManual({ nisn, nama, kelas }, classOptions, registeredNisn) : {}
+  const liveErrors = touched ? validateManual({ nis, nisn, nama, kelas }, classOptions, registered) : {}
+
+  function handleNisChange(value: string) {
+    setNis(value.replace(/\D/g, "").slice(0, 30))
+  }
 
   function handleNisnChange(value: string) {
     // Hanya angka, maksimal 10 digit, disimpan sebagai string (nol depan dipertahankan)
@@ -61,13 +67,16 @@ export function ManualInputForm() {
 
   async function runSave(mode: "single" | "again") {
     setTouched(true)
-    const validation = validateManual({ nisn, nama, kelas }, classOptions, registeredNisn)
+    const validation = validateManual({ nis, nisn, nama, kelas }, classOptions, registered)
     setErrors(validation)
 
-    // Kasus khusus: NISN duplikat -> tampilkan dialog informatif
+    if (validation.nis === "NIS sudah terdaftar pada siswa lain") {
+      setDuplicateInfo({ label: "NIS", value: nis, nama: registered.nis[nis] ?? "siswa lain" })
+      return
+    }
+
     if (validation.nisn === "NISN sudah terdaftar pada siswa lain") {
-      const existing = registeredNisn[nisn] ?? "siswa lain"
-      setDuplicateInfo({ nisn, nama: existing })
+      setDuplicateInfo({ label: "NISN", value: nisn, nama: registered.nisn[nisn] ?? "siswa lain" })
       return
     }
 
@@ -77,9 +86,9 @@ export function ManualInputForm() {
     setSaveError(false)
 
     try {
-      const response = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nisn, name: nama.trim(), className: kelas }) })
+      const response = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nis, nisn, name: nama.trim(), className: kelas }) })
       if (!response.ok) {
-        if (response.status === 409) setDuplicateInfo({ nisn, nama: "siswa lain" })
+        if (response.status === 409) setDuplicateInfo({ label: nis ? "NIS" : "NISN", value: nis || nisn, nama: "siswa lain" })
         throw new Error("Gagal menyimpan")
       }
         const cleanNama = nama.trim()
@@ -88,7 +97,8 @@ export function ManualInputForm() {
         if (mode === "single") {
           setSuccessInfo({ nama: cleanNama, kelas })
         } else {
-          // Simpan & Tambah Lagi: kosongkan NISN & nama, pertahankan kelas, fokus ke NISN
+          // Pertahankan kelas agar input siswa berikutnya lebih cepat.
+          setNis("")
           setNisn("")
           setNama("")
           setTouched(false)
@@ -96,7 +106,7 @@ export function ManualInputForm() {
           toast.success("Siswa berhasil ditambahkan", {
             description: `${cleanNama} • ${kelas}`,
           })
-          window.setTimeout(() => nisnRef.current?.focus(), 30)
+          window.setTimeout(() => nisRef.current?.focus(), 30)
         }
       } catch {
         setSaving(null)
@@ -104,9 +114,10 @@ export function ManualInputForm() {
       }
   }
 
-  const nisnError = errors.nisn && touched ? errors.nisn : liveErrors.nisn
-  const namaError = errors.nama && touched ? errors.nama : liveErrors.nama
-  const kelasError = errors.kelas && touched ? errors.kelas : liveErrors.kelas
+  const nisError = touched ? liveErrors.nis : errors.nis
+  const nisnError = touched ? liveErrors.nisn : errors.nisn
+  const namaError = touched ? liveErrors.nama : errors.nama
+  const kelasError = touched ? liveErrors.kelas : errors.kelas
 
   return (
     <>
@@ -129,14 +140,32 @@ export function ManualInputForm() {
             }}
           >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {/* NIS */}
+              <div className="space-y-1.5">
+                <Label htmlFor="nis">NIS</Label>
+                <Input
+                  id="nis"
+                  ref={nisRef}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="Masukkan NIS siswa"
+                  value={nis}
+                  onChange={(e) => handleNisChange(e.target.value)}
+                  onBlur={() => setTouched(true)}
+                  aria-invalid={Boolean(nisError)}
+                  aria-describedby="nis-help"
+                />
+                <p id="nis-help" className={cn("text-xs", nisError ? "text-destructive" : "text-muted-foreground")}>
+                  {nisError ?? "Wajib bila NISN tidak diisi; hanya angka."}
+                </p>
+              </div>
+
               {/* NISN */}
               <div className="space-y-1.5">
-                <Label htmlFor="nisn">
-                  NISN <span className="text-destructive">*</span>
-                </Label>
+                <Label htmlFor="nisn">NISN</Label>
                 <Input
                   id="nisn"
-                  ref={nisnRef}
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
@@ -154,7 +183,7 @@ export function ManualInputForm() {
                     nisnError ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
-                  {nisnError ?? "NISN harus terdiri dari 10 digit angka."}
+                  {nisnError ?? "Wajib bila NIS tidak diisi; harus 10 digit."}
                 </p>
               </div>
 
@@ -273,6 +302,7 @@ export function ManualInputForm() {
               className="w-full sm:w-auto sm:min-w-32"
               onClick={() => {
                 // Kosongkan seluruh field setelah OK agar siap input berikutnya
+                setNis("")
                 setNisn("")
                 setNama("")
                 setKelas("")
@@ -287,17 +317,17 @@ export function ManualInputForm() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog NISN duplikat */}
+      {/* Dialog identitas duplikat */}
       <Dialog open={Boolean(duplicateInfo)} onOpenChange={(o) => !o && setDuplicateInfo(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CircleAlert className="size-5 text-[var(--chart-4)]" />
-              NISN sudah terdaftar
+              {duplicateInfo?.label ?? "Identitas"} sudah terdaftar
             </DialogTitle>
             <DialogDescription>
               {duplicateInfo
-                ? `NISN ${duplicateInfo.nisn} sudah digunakan oleh siswa ${duplicateInfo.nama}. Data tidak disimpan.`
+                ? `${duplicateInfo.label} ${duplicateInfo.value} sudah digunakan oleh siswa ${duplicateInfo.nama}. Data tidak disimpan.`
                 : null}
             </DialogDescription>
           </DialogHeader>

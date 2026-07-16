@@ -35,13 +35,15 @@ function DesktopTable({ roster, statuses, notes, onStatus, onNote }: EditorProps
       <Table>
         <colgroup>
           <col style={{ width: "56px" }} />
-          <col style={{ width: "24%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "20%" }} />
           <col />
           <col style={{ width: "24%" }} />
         </colgroup>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="h-12 text-center">No.</TableHead>
+            <TableHead className="h-12">NIS</TableHead>
             <TableHead className="h-12">Nama Lengkap Siswa</TableHead>
             <TableHead className="h-12">Status Kehadiran</TableHead>
             <TableHead className="h-12">Keterangan</TableHead>
@@ -53,6 +55,7 @@ function DesktopTable({ roster, statuses, notes, onStatus, onNote }: EditorProps
               <TableCell className="py-3 text-center font-medium tabular-nums text-muted-foreground">
                 {String(s.no).padStart(2, "0")}
               </TableCell>
+              <TableCell className="py-3 font-mono text-sm text-muted-foreground">{s.nis ?? "-"}</TableCell>
               <TableCell className="py-3 font-medium text-foreground">{s.name}</TableCell>
               <TableCell className="py-3">
                 <StatusToggle
@@ -91,6 +94,7 @@ function MobileCards({ roster, statuses, notes, onStatus, onNote }: EditorProps)
             </span>
             <span className="font-semibold text-foreground text-pretty">{s.name}</span>
           </div>
+          <p className="text-xs text-muted-foreground">NIS: <span className="font-mono">{s.nis ?? "-"}</span></p>
           <StatusToggle
             value={statuses[s.id] ?? "belum"}
             onChange={(status) => onStatus(s.id, status)}

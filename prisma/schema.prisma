@@ -50,7 +50,8 @@ model SchoolClass {
 
 model Student {
   id String @id @default(cuid())
-  nisn String @unique
+  nis String? @unique
+  nisn String? @unique
   name String
   active Boolean @default(true)
   classId String

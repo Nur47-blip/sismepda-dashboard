@@ -42,7 +42,7 @@ export default function RekapSiswaPage() {
     return students.filter((s) => {
       const matchCls = cls === "all" || s.className === cls
       const matchQuery =
-        query.trim() === "" || s.name.toLowerCase().includes(query.toLowerCase())
+        query.trim() === "" || s.name.toLowerCase().includes(query.toLowerCase()) || s.nis?.includes(query) || s.nisn?.includes(query)
       return matchCls && matchQuery
     })
   }, [students, cls, query])
@@ -71,7 +71,7 @@ export default function RekapSiswaPage() {
             <Input
               value={query}
               onChange={(e) => resetVisible(setQuery)(e.target.value)}
-              placeholder="Cari nama siswa..."
+              placeholder="Cari nama, NIS, atau NISN..."
               className="bg-card pl-9"
             />
           </div>
@@ -101,6 +101,8 @@ export default function RekapSiswaPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="min-w-48">Nama Siswa</TableHead>
+                  <TableHead>NIS</TableHead>
+                  <TableHead>NISN</TableHead>
                   <TableHead>Kelas</TableHead>
                   <TableHead className="text-center">Hadir</TableHead>
                   <TableHead className="text-center">Sakit</TableHead>
@@ -114,6 +116,8 @@ export default function RekapSiswaPage() {
                 {shown.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium text-foreground">{s.name}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{s.nis ?? "-"}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{s.nisn ?? "-"}</TableCell>
                     <TableCell className="text-muted-foreground">{s.className}</TableCell>
                     <TableCell className="text-center font-semibold text-[var(--chart-1)]">
                       {s.hadir}

@@ -35,6 +35,8 @@ export async function getAbsenceRanking(): Promise<AbsenceRankingRow[]> {
     },
     select: {
       id: true,
+      nis: true,
+      nisn: true,
       name: true,
       schoolClass: { select: { name: true } },
       attendances: {
@@ -51,6 +53,8 @@ export async function getAbsenceRanking(): Promise<AbsenceRankingRow[]> {
 
     return {
       id: student.id,
+      nis: student.nis,
+      nisn: student.nisn,
       name: student.name,
       className: student.schoolClass.name,
       sakit: count("SAKIT"),

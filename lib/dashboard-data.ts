@@ -27,6 +27,8 @@ export type AbsenceHistory = {
 
 export type AbsentStudent = {
   id: string
+  nis: string | null
+  nisn: string | null
   name: string
   className: string
   status: Exclude<AttendanceStatus, "hadir">
@@ -90,6 +92,8 @@ export const grades_list = grades
 
 export type StudentRow = {
   id: string
+  nis: string | null
+  nisn: string | null
   name: string
   className: string
   grade: (typeof grades)[number]

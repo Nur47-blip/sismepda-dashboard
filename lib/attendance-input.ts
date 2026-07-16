@@ -6,6 +6,8 @@ export type RosterStudent = {
   id: string
   no: number
   name: string
+  nis: string | null
+  nisn: string | null
 }
 
 export type ClassOption = {
