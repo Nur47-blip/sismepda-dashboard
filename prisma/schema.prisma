@@ -85,6 +85,10 @@ model Attendance {
 
 model SchoolSetting {
   id String @id @default("default")
+  websiteTitle String @default("SISMEPDA — Dashboard Absensi Sekolah")
+  faviconData Bytes?
+  faviconMimeType String?
+  faviconUpdatedAt DateTime?
   schoolName String @default("SMP Negeri 1 Contoh")
   npsn String?
   academicYear String @default("2025/2026")

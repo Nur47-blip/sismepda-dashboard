@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { Download, ImageIcon, Loader2, Save, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,8 +12,10 @@ import { Separator } from "@/components/ui/separator"
 import { PageContainer, PageHeading } from "@/components/layout/page-container"
 import { HolidayManager } from "@/components/settings/holiday-manager"
 import { DatabaseBackupCard } from "@/components/settings/database-backup"
+import { FAVICON_ACCEPT, MAX_FAVICON_BYTES } from "@/lib/site-branding"
 
 export default function PengaturanPage() {
+  const [websiteTitle, setWebsiteTitle] = useState("SISMEPDA — Dashboard Absensi Sekolah")
   const [notifReminder, setNotifReminder] = useState(true)
   const [notifDaily, setNotifDaily] = useState(true)
   const [notifWeekly, setNotifWeekly] = useState(false)
@@ -24,15 +27,110 @@ export default function PengaturanPage() {
   const [openTime, setOpenTime] = useState("06:30")
   const [closeTime, setCloseTime] = useState("08:00")
   const [saving, setSaving] = useState(false)
-  useEffect(() => { fetch("/api/admin/settings").then((r) => r.json()).then((s) => { setSchoolName(s.schoolName); setNpsn(s.npsn ?? ""); setAcademicYear(s.academicYear); setSemester(s.semester); setOpenTime(s.attendanceOpenTime); setCloseTime(s.attendanceCloseTime); setAutoLock(s.autoLock) }) }, [])
-  async function save() { setSaving(true); const response = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, npsn, academicYear, semester, attendanceOpenTime: openTime, attendanceCloseTime: closeTime, autoLock }) }); setSaving(false); response.ok ? toast.success("Pengaturan disimpan") : toast.error("Pengaturan gagal disimpan") }
+  const [faviconUrl, setFaviconUrl] = useState("/favicon.ico")
+  const [faviconFile, setFaviconFile] = useState<File | null>(null)
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
+  const faviconInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { fetch("/api/admin/settings").then((r) => r.json()).then((s) => { setWebsiteTitle(s.websiteTitle); setSchoolName(s.schoolName); setNpsn(s.npsn ?? ""); setAcademicYear(s.academicYear); setSemester(s.semester); setOpenTime(s.attendanceOpenTime); setCloseTime(s.attendanceCloseTime); setAutoLock(s.autoLock); setFaviconUrl(s.faviconUrl ?? "/favicon.ico") }) }, [])
+  useEffect(() => () => { if (faviconPreview) URL.revokeObjectURL(faviconPreview) }, [faviconPreview])
+
+  async function save() {
+    if (!websiteTitle.trim()) { toast.error("Title website wajib diisi"); return }
+    setSaving(true)
+    const response = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteTitle, schoolName, npsn, academicYear, semester, attendanceOpenTime: openTime, attendanceCloseTime: closeTime, autoLock }) })
+    setSaving(false)
+    if (response.ok) {
+      document.title = websiteTitle.trim()
+      toast.success("Pengaturan disimpan")
+    } else {
+      toast.error("Pengaturan gagal disimpan")
+    }
+  }
+
+  function chooseFavicon(file: File | null) {
+    if (!file) return
+    const validType = file.type === "image/png" || file.type === "image/x-icon" || file.type === "image/vnd.microsoft.icon" || file.name.toLowerCase().endsWith(".ico")
+    if (!validType) { toast.error("Favicon harus berformat PNG atau ICO"); return }
+    if (file.size > MAX_FAVICON_BYTES) { toast.error("Ukuran favicon maksimal 512 KB"); return }
+    setFaviconFile(file)
+    setFaviconPreview(URL.createObjectURL(file))
+  }
+
+  async function uploadFavicon() {
+    if (!faviconFile) return
+    setUploadingFavicon(true)
+    try {
+      const formData = new FormData()
+      formData.set("favicon", faviconFile)
+      const response = await fetch("/favicon.ico", { method: "PUT", body: formData })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? "Favicon gagal disimpan")
+      setFaviconUrl(data.faviconUrl)
+      setFaviconFile(null)
+      setFaviconPreview(null)
+      if (faviconInputRef.current) faviconInputRef.current.value = ""
+      let icon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]')
+      if (!icon) { icon = document.createElement("link"); icon.rel = "icon"; document.head.appendChild(icon) }
+      icon.href = data.faviconUrl
+      toast.success("Favicon berhasil diperbarui")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Favicon gagal disimpan")
+    } finally {
+      setUploadingFavicon(false)
+    }
+  }
 
   return (
     <PageContainer>
       <PageHeading
         title="Pengaturan"
-        description="Kelola profil sekolah, waktu input absensi, dan preferensi notifikasi."
+        description="Kelola branding website, profil sekolah, waktu input absensi, dan preferensi notifikasi."
       />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Branding Website</CardTitle>
+          <CardDescription>Atur title pada tab browser dan favicon website.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="website-title">Title Website</Label>
+            <Input id="website-title" value={websiteTitle} onChange={(event) => setWebsiteTitle(event.target.value)} maxLength={100} className="bg-card" placeholder="Contoh: Dashboard Absensi Sekolah" />
+            <p className="text-xs text-muted-foreground">Maksimal 100 karakter dan akan tampil pada tab browser.</p>
+          </div>
+
+          <Separator />
+
+          <div className="grid gap-4 sm:grid-cols-[96px_1fr] sm:items-center">
+            <div className="flex size-24 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40">
+              {faviconPreview || faviconUrl ? <img src={faviconPreview ?? faviconUrl} alt="Favicon saat ini" className="size-16 object-contain" /> : <ImageIcon className="size-8 text-muted-foreground" />}
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="font-medium">Favicon</p>
+                <p className="text-xs text-muted-foreground">Format PNG atau ICO, maksimal 512 KB. Disarankan berukuran persegi.</p>
+              </div>
+              <input ref={faviconInputRef} type="file" accept={FAVICON_ACCEPT} className="sr-only" onChange={(event) => chooseFavicon(event.target.files?.[0] ?? null)} />
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => faviconInputRef.current?.click()} disabled={uploadingFavicon}>
+                  <Upload className="size-4" />Pilih Favicon
+                </Button>
+                {faviconFile ? (
+                  <Button type="button" onClick={uploadFavicon} disabled={uploadingFavicon}>
+                    {uploadingFavicon ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                    {uploadingFavicon ? "Mengunggah..." : "Simpan Favicon"}
+                  </Button>
+                ) : null}
+                <Button render={<a href={`${faviconUrl}${faviconUrl.includes("?") ? "&" : "?"}download=1`} download />} type="button" variant="outline">
+                  <Download className="size-4" />Download Favicon Saat Ini
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
