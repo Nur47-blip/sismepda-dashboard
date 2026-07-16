@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { CsvDelimiterField } from "@/components/csv-delimiter-field"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -35,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { changeCsvDelimiter } from "@/lib/csv"
 import {
   GURU_CSV_TEMPLATE,
   guruCsvStatusMeta,
@@ -77,6 +79,8 @@ function toneBadge(tone: "valid" | "skip" | "error") {
 }
 
 export function GuruCsvUpload() {
+  const [delimiter, setDelimiter] = useState(",")
+  const [fileText, setFileText] = useState<string | null>(null)
   const [registered, setRegistered] = useState<RegisteredGuruIdentifiers>({ nip: {}, email: {} })
   useEffect(() => {
     fetch("/api/admin/teachers").then((response) => response.json()).then((teachers) => setRegistered({
@@ -97,6 +101,7 @@ export function GuruCsvUpload() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const resetAll = useCallback(() => {
+    setFileText(null)
     setFileInfo(null)
     setParseResult(null)
     setFileError(null)
@@ -106,7 +111,7 @@ export function GuruCsvUpload() {
   }, [])
 
   const handleDownloadTemplate = useCallback(() => {
-    const blob = new Blob([GURU_CSV_TEMPLATE], { type: "text/csv;charset=utf-8" })
+    const blob = new Blob([changeCsvDelimiter(GURU_CSV_TEMPLATE, delimiter)], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -116,7 +121,14 @@ export function GuruCsvUpload() {
     a.remove()
     URL.revokeObjectURL(url)
     toast.success("Template CSV diunduh")
-  }, [])
+  }, [delimiter])
+
+  const handleDelimiterChange = useCallback((nextDelimiter: string) => {
+    setDelimiter(nextDelimiter)
+    if (fileText !== null) {
+      setParseResult(parseGuruCsv(fileText, registered, nextDelimiter))
+    }
+  }, [fileText, registered])
 
   const processFile = useCallback((file: File) => {
     setFileError(null)
@@ -144,7 +156,7 @@ export function GuruCsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseGuruCsv(text, registered)
+      const result = parseGuruCsv(text, registered, delimiter)
       setFileInfo({
         name: file.name,
         size: file.size,
@@ -154,10 +166,11 @@ export function GuruCsvUpload() {
         }).format(new Date()),
       })
       setParseResult(result)
+      setFileText(text)
       setReading(false)
     }
     reader.readAsText(file)
-  }, [registered])
+  }, [delimiter, registered])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -206,6 +219,11 @@ export function GuruCsvUpload() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <CsvDelimiterField
+            value={delimiter}
+            onChange={handleDelimiterChange}
+            disabled={reading || importing}
+          />
           <div className="overflow-x-auto rounded-lg border border-border/60">
             <Table className="min-w-[640px]">
               <TableHeader>

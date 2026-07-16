@@ -1,3 +1,5 @@
+import { parseDelimitedText } from "@/lib/csv"
+
 // ---------- Prefix / sapaan ----------
 // Daftar awal; admin dapat menambahkan nilai baru lewat combobox.
 export const defaultPrefixOptions: string[] = [
@@ -176,47 +178,41 @@ export type GuruCsvParseResult =
       total: number
     }
 
-function splitCsvLine(line: string): string[] {
-  return line.split(",").map((c) => c.trim())
-}
+export function parseGuruCsv(
+  text: string,
+  registered: RegisteredGuruIdentifiers = EMPTY_REGISTERED_GURU,
+  delimiter = ",",
+): GuruCsvParseResult {
+  const records = parseDelimitedText(text, delimiter)
 
-export function parseGuruCsv(text: string, registered: RegisteredGuruIdentifiers = EMPTY_REGISTERED_GURU): GuruCsvParseResult {
-  const lines = text
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .filter((l) => l.trim().length > 0)
-
-  if (lines.length === 0) {
+  if (records.length === 0) {
     return { ok: false, error: "empty" }
   }
 
-  const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase())
+  const header = records[0].map((h) => h.trim().toLowerCase())
   const headerMatches = header.length >= GURU_CSV_HEADERS.length && GURU_CSV_HEADERS.every((h, i) => header[i] === h)
   const legacyHeaderMatches = header.length >= LEGACY_GURU_CSV_HEADERS.length && LEGACY_GURU_CSV_HEADERS.every((h, i) => header[i] === h)
 
   if (!headerMatches && !legacyHeaderMatches) {
-    return { ok: false, error: "header", headerFound: lines[0] }
+    return { ok: false, error: "header", headerFound: records[0].join(delimiter) }
   }
 
-  const dataLines = lines.slice(1)
-  if (dataLines.length === 0) {
+  const dataRecords = records.slice(1)
+  if (dataRecords.length === 0) {
     return { ok: false, error: "empty" }
   }
 
   // Hitung kemunculan identitas untuk deteksi duplikat di dalam file.
   const nipSeen = new Map<string, number>()
   const emailSeen = new Map<string, number>()
-  for (const line of dataLines) {
-    const cells = splitCsvLine(line)
+  for (const cells of dataRecords) {
     const nip = (cells[0] ?? "").trim()
     const email = headerMatches ? (cells[1] ?? "").trim().toLowerCase() : ""
     if (nip) nipSeen.set(nip, (nipSeen.get(nip) ?? 0) + 1)
     if (email) emailSeen.set(email, (emailSeen.get(email) ?? 0) + 1)
   }
 
-  const rows: GuruCsvRow[] = dataLines.map((line, index) => {
-    const cells = splitCsvLine(line)
+  const rows: GuruCsvRow[] = dataRecords.map((cells, index) => {
     const nip = (cells[0] ?? "").trim()
     const email = headerMatches ? (cells[1] ?? "").trim().toLowerCase() : ""
     const offset = headerMatches ? 1 : 0

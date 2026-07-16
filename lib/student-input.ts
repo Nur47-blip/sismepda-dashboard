@@ -1,3 +1,5 @@
+import { parseDelimitedText } from "@/lib/csv"
+
 const NISN_PATTERN = /^\d{10}$/
 
 export function isValidNisnFormat(nisn: string): boolean {
@@ -75,22 +77,19 @@ export type CsvParseResult =
       total: number
     }
 
-function splitCsvLine(line: string): string[] {
-  return line.split(",").map((c) => c.trim())
-}
+export function parseCsv(
+  text: string,
+  classOptions: string[] = [],
+  registeredNisn: Record<string, string> = {},
+  delimiter = ",",
+): CsvParseResult {
+  const records = parseDelimitedText(text, delimiter)
 
-export function parseCsv(text: string, classOptions: string[] = [], registeredNisn: Record<string, string> = {}): CsvParseResult {
-  const lines = text
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .filter((l) => l.trim().length > 0)
-
-  if (lines.length === 0) {
+  if (records.length === 0) {
     return { ok: false, error: "empty" }
   }
 
-  const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase())
+  const header = records[0].map((h) => h.trim().toLowerCase())
   const headerMatches =
     header.length >= 3 &&
     header[0] === CSV_HEADERS[0] &&
@@ -98,24 +97,22 @@ export function parseCsv(text: string, classOptions: string[] = [], registeredNi
     header[2] === CSV_HEADERS[2]
 
   if (!headerMatches) {
-    return { ok: false, error: "header", headerFound: lines[0] }
+    return { ok: false, error: "header", headerFound: records[0].join(delimiter) }
   }
 
-  const dataLines = lines.slice(1)
-  if (dataLines.length === 0) {
+  const dataRecords = records.slice(1)
+  if (dataRecords.length === 0) {
     return { ok: false, error: "empty" }
   }
 
   // Hitung kemunculan NISN untuk deteksi duplikat di dalam file.
   const nisnSeen = new Map<string, number>()
-  for (const line of dataLines) {
-    const cells = splitCsvLine(line)
+  for (const cells of dataRecords) {
     const nisn = (cells[0] ?? "").trim()
     if (nisn) nisnSeen.set(nisn, (nisnSeen.get(nisn) ?? 0) + 1)
   }
 
-  const rows: CsvRow[] = dataLines.map((line, index) => {
-    const cells = splitCsvLine(line)
+  const rows: CsvRow[] = dataRecords.map((cells, index) => {
     const nisn = (cells[0] ?? "").trim()
     const nama = (cells[1] ?? "").trim()
     const kelas = (cells[2] ?? "").trim()

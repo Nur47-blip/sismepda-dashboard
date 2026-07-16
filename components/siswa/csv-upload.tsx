@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { CsvDelimiterField } from "@/components/csv-delimiter-field"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -35,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { changeCsvDelimiter } from "@/lib/csv"
 import {
   CSV_TEMPLATE,
   csvStatusMeta,
@@ -75,6 +77,8 @@ function toneBadge(tone: "valid" | "skip" | "error") {
 }
 
 export function CsvUpload() {
+  const [delimiter, setDelimiter] = useState(",")
+  const [fileText, setFileText] = useState<string | null>(null)
   const [classOptions, setClassOptions] = useState<string[]>([])
   const [registeredNisn, setRegisteredNisn] = useState<Record<string, string>>({})
   useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegisteredNisn(Object.fromEntries(data.students.map((student: { nisn: string; name: string }) => [student.nisn, student.name]))) }) }, [])
@@ -91,6 +95,7 @@ export function CsvUpload() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const resetAll = useCallback(() => {
+    setFileText(null)
     setFileInfo(null)
     setParseResult(null)
     setFileError(null)
@@ -100,7 +105,7 @@ export function CsvUpload() {
   }, [])
 
   const handleDownloadTemplate = useCallback(() => {
-    const blob = new Blob([CSV_TEMPLATE], { type: "text/csv;charset=utf-8" })
+    const blob = new Blob([changeCsvDelimiter(CSV_TEMPLATE, delimiter)], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -110,7 +115,14 @@ export function CsvUpload() {
     a.remove()
     URL.revokeObjectURL(url)
     toast.success("Template CSV diunduh")
-  }, [])
+  }, [delimiter])
+
+  const handleDelimiterChange = useCallback((nextDelimiter: string) => {
+    setDelimiter(nextDelimiter)
+    if (fileText !== null) {
+      setParseResult(parseCsv(fileText, classOptions, registeredNisn, nextDelimiter))
+    }
+  }, [classOptions, fileText, registeredNisn])
 
   const processFile = useCallback((file: File) => {
     setFileError(null)
@@ -138,7 +150,7 @@ export function CsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseCsv(text, classOptions, registeredNisn)
+      const result = parseCsv(text, classOptions, registeredNisn, delimiter)
       const rowCount = result.ok ? result.total : 0
       setFileInfo({
         name: file.name,
@@ -149,11 +161,12 @@ export function CsvUpload() {
         }).format(new Date()),
       })
       setParseResult(result)
+      setFileText(text)
       setReading(false)
       void rowCount
     }
     reader.readAsText(file)
-  }, [classOptions, registeredNisn])
+  }, [classOptions, delimiter, registeredNisn])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -202,6 +215,11 @@ export function CsvUpload() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <CsvDelimiterField
+            value={delimiter}
+            onChange={handleDelimiterChange}
+            disabled={reading || importing}
+          />
           <div className="overflow-x-auto rounded-lg border border-border/60">
             <Table>
               <TableHeader>
