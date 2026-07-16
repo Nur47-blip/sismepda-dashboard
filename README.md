@@ -5,8 +5,9 @@ Dashboard absensi sekolah berbasis Next.js 16, Auth.js, Prisma, dan PostgreSQL.
 ## Hak akses
 
 - `ADMIN`: seluruh halaman dan seluruh kelas.
-- `GURU`: dashboard, input absensi, serta halaman rekap.
-- Guru hanya dapat mengambil dan menyimpan absensi kelas yang ditugaskan kepadanya.
+- `GURU`: dashboard, input absensi, halaman rekap, dan export data absensi.
+- Secara default guru hanya dapat melihat dan menyimpan absensi kelas yang ditugaskan kepadanya.
+- Admin dapat mengaktifkan **Izinkan guru mengakses seluruh kelas** di Pengaturan agar seluruh guru dapat melihat, mengekspor, menginput, dan memperbarui absensi semua kelas.
 
 Admin membuat akun guru melalui Input Guru, lalu menetapkan kelas melalui Wali Kelas.
 

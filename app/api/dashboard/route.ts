@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import { parseDateValue } from "@/lib/date"
 import { sortClasses } from "@/lib/class-order"
+import { getClassAccess } from "@/lib/class-access"
 
 function jakartaMinutes(date: Date) {
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date)
@@ -17,8 +18,9 @@ function timeLimitMinutes(value: string) {
 export async function GET(request: Request) {
   try {
     const user = await requireUser()
+    const access = await getClassAccess(user)
     const date = parseDateValue(new URL(request.url).searchParams.get("date"))
-    const classWhere = user.role === "GURU" ? { homeroomUserId: user.id } : {}
+    const classWhere = access.where
     const holiday = await prisma.schoolHoliday.findUnique({ where: { date }, select: { id: true, name: true } })
     const rows = await prisma.schoolClass.findMany({
       where: classWhere,

@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma"
 import type { ClassRecord } from "@/lib/dashboard-data"
 import type { AbsenceRankingRow } from "@/components/dashboard/absence-ranking"
 import { sortClasses } from "@/lib/class-order"
+import { getClassAccess } from "@/lib/class-access"
 
 export async function getClassRecords(date: Date): Promise<ClassRecord[]> {
   const user = await requireUser()
+  const access = await getClassAccess(user)
   const rows = await prisma.schoolClass.findMany({
-    where: user.role === "GURU" ? { homeroomUserId: user.id } : {},
+    where: access.where,
     include: { students: { where: { active: true } }, homeroomUser: true, attendanceDays: { where: { date }, include: { attendances: true } } },
     orderBy: { name: "asc" },
   })
@@ -26,12 +28,11 @@ export async function getClassRecords(date: Date): Promise<ClassRecord[]> {
 
 export async function getAbsenceRanking(): Promise<AbsenceRankingRow[]> {
   const user = await requireUser()
+  const access = await getClassAccess(user)
   const students = await prisma.student.findMany({
     where: {
       active: true,
-      ...(user.role === "GURU"
-        ? { schoolClass: { homeroomUserId: user.id } }
-        : {}),
+      schoolClass: access.where,
     },
     select: {
       id: true,

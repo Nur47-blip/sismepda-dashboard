@@ -96,6 +96,7 @@ model SchoolSetting {
   attendanceOpenTime String @default("06:30")
   attendanceCloseTime String @default("08:00")
   autoLock Boolean @default(true)
+  allowTeachersAccessAllClasses Boolean @default(false)
 }
 
 model SchoolHoliday {

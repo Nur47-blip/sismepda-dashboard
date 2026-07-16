@@ -20,6 +20,7 @@ export default function PengaturanPage() {
   const [notifDaily, setNotifDaily] = useState(true)
   const [notifWeekly, setNotifWeekly] = useState(false)
   const [autoLock, setAutoLock] = useState(true)
+  const [allowTeachersAccessAllClasses, setAllowTeachersAccessAllClasses] = useState(false)
   const [schoolName, setSchoolName] = useState("SMP Negeri 1 Contoh")
   const [npsn, setNpsn] = useState("20200123")
   const [academicYear, setAcademicYear] = useState("2025/2026")
@@ -33,13 +34,13 @@ export default function PengaturanPage() {
   const [uploadingFavicon, setUploadingFavicon] = useState(false)
   const faviconInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { fetch("/api/admin/settings").then((r) => r.json()).then((s) => { setWebsiteTitle(s.websiteTitle); setSchoolName(s.schoolName); setNpsn(s.npsn ?? ""); setAcademicYear(s.academicYear); setSemester(s.semester); setOpenTime(s.attendanceOpenTime); setCloseTime(s.attendanceCloseTime); setAutoLock(s.autoLock); setFaviconUrl(s.faviconUrl ?? "/favicon.ico") }) }, [])
+  useEffect(() => { fetch("/api/admin/settings").then((r) => r.json()).then((s) => { setWebsiteTitle(s.websiteTitle); setSchoolName(s.schoolName); setNpsn(s.npsn ?? ""); setAcademicYear(s.academicYear); setSemester(s.semester); setOpenTime(s.attendanceOpenTime); setCloseTime(s.attendanceCloseTime); setAutoLock(s.autoLock); setAllowTeachersAccessAllClasses(s.allowTeachersAccessAllClasses ?? false); setFaviconUrl(s.faviconUrl ?? "/favicon.ico") }) }, [])
   useEffect(() => () => { if (faviconPreview) URL.revokeObjectURL(faviconPreview) }, [faviconPreview])
 
   async function save() {
     if (!websiteTitle.trim()) { toast.error("Title website wajib diisi"); return }
     setSaving(true)
-    const response = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteTitle, schoolName, npsn, academicYear, semester, attendanceOpenTime: openTime, attendanceCloseTime: closeTime, autoLock }) })
+    const response = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ websiteTitle, schoolName, npsn, academicYear, semester, attendanceOpenTime: openTime, attendanceCloseTime: closeTime, autoLock, allowTeachersAccessAllClasses }) })
     setSaving(false)
     if (response.ok) {
       document.title = websiteTitle.trim()
@@ -162,6 +163,24 @@ export default function PengaturanPage() {
       <HolidayManager />
 
       <DatabaseBackupCard />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Hak Akses Guru</CardTitle>
+          <CardDescription>Atur cakupan kelas yang dapat dilihat dan diinput oleh seluruh akun guru.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="teacher-all-classes">Izinkan guru mengakses seluruh kelas</Label>
+              <p className="text-sm text-muted-foreground">
+                Jika aktif, semua guru dapat melihat dashboard, rekap, dan export serta menginput atau memperbarui absensi seluruh kelas.
+              </p>
+            </div>
+            <Switch id="teacher-all-classes" checked={allowTeachersAccessAllClasses} onCheckedChange={setAllowTeachersAccessAllClasses} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

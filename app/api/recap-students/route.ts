@@ -3,11 +3,12 @@ import { requireUser } from "@/lib/auth-guards"
 import { prisma } from "@/lib/prisma"
 import { parseDateValue } from "@/lib/date"
 import { sortClasses } from "@/lib/class-order"
+import { getClassAccess } from "@/lib/class-access"
 
 export async function GET(request: Request) {
   try {
     const user = await requireUser(); const today = parseDateValue(new URL(request.url).searchParams.get("date"))
-    const classWhere = user.role === "GURU" ? { homeroomUserId: user.id } : {}
+    const classWhere = (await getClassAccess(user)).where
     const [students, classes, holiday] = await Promise.all([
       prisma.student.findMany({ where: { active: true, schoolClass: classWhere }, include: { schoolClass: true, attendances: { include: { attendanceDay: true } } }, orderBy: { name: "asc" } }),
       prisma.schoolClass.findMany({ where: classWhere, select: { name: true }, orderBy: { name: "asc" } }),

@@ -4,6 +4,7 @@ import { sortClasses } from "@/lib/class-order"
 import { localDateValue, parseDateValue } from "@/lib/date"
 import { csvDownload, exportDelimiter, isExportType, type ExportType } from "@/lib/export-data"
 import { prisma } from "@/lib/prisma"
+import { getClassAccess } from "@/lib/class-access"
 
 type User = Awaited<ReturnType<typeof requireUser>>
 
@@ -102,7 +103,7 @@ async function exportStudentAttendance(params: URLSearchParams, delimiter: strin
   const date = parseDateValue(dateValue)
   const className = normalized(params.get("class"))
   const query = normalized(params.get("query"))
-  const classWhere = user.role === "GURU" ? { homeroomUserId: user.id } : {}
+  const classWhere = (await getClassAccess(user)).where
   const students = await prisma.student.findMany({
     where: {
       active: true,
@@ -128,9 +129,10 @@ async function exportClassAttendance(params: URLSearchParams, delimiter: string,
   const date = parseDateValue(dateValue)
   const grade = normalized(params.get("grade"))
   const query = normalized(params.get("query"))
+  const classWhere = (await getClassAccess(user)).where
   const classes = sortClasses(await prisma.schoolClass.findMany({
     where: {
-      ...(user.role === "GURU" ? { homeroomUserId: user.id } : {}),
+      ...classWhere,
       ...(grade ? { grade } : {}),
     },
     include: {

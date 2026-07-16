@@ -44,7 +44,7 @@ import {
 } from "@/lib/attendance-input"
 import { formatLongDate, localDateValue, parseDateValue } from "@/lib/date"
 
-type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; nis: string | null; nisn: string | null; name: string }>; attendanceDays: Array<{ submittedAt: string; updatedAt: string; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
+type ApiClass = { id: string; name: string; homeroomUser: { name: string } | null; students: Array<{ id: string; nis: string | null; nisn: string | null; name: string }>; attendanceDays: Array<{ submittedAt: string; updatedAt: string; submittedBy: { name: string }; attendances: Array<{ studentId: string; status: string; note: string | null }> }> }
 
 function emptyCounts(): Record<InputStatus, number> {
   return { belum: 0, hadir: 0, sakit: 0, izin: 0, alfa: 0, dispensasi: 0 }
@@ -103,7 +103,7 @@ export default function AbsensiInputPage() {
         setNotes(nextNotes)
         setHasSaved(Boolean(requested?.attendanceDays.length))
         setLastSaved(requested?.attendanceDays[0]?.updatedAt
-          ? { time: formatJam(requested.attendanceDays[0].updatedAt), by: requested.homeroomUser?.name ?? "Admin" }
+          ? { time: formatJam(requested.attendanceDays[0].updatedAt), by: requested.attendanceDays[0].submittedBy.name }
           : null)
       })
       .catch(() => toast.error("Gagal memuat kelas"))
@@ -136,7 +136,7 @@ export default function AbsensiInputPage() {
 
   const applyClass = useCallback((id: string) => {
     const cls = classes.find((c) => c.id === id)
-    const option = cls ? { submitted: cls.attendanceDays.length > 0, submittedAt: cls.attendanceDays[0]?.updatedAt, homeroom: cls.homeroomUser?.name ?? "Admin" } : undefined
+    const option = cls ? { submitted: cls.attendanceDays.length > 0, submittedAt: cls.attendanceDays[0]?.updatedAt, submittedBy: cls.attendanceDays[0]?.submittedBy.name } : undefined
     const list = cls?.students ?? []
     const saved = cls?.attendanceDays[0]?.attendances ?? []
     const nextStatuses: Record<string, InputStatus> = {}
@@ -152,7 +152,7 @@ export default function AbsensiInputPage() {
     setDirty(false)
     if (option?.submitted && option.submittedAt) {
       setHasSaved(true)
-      setLastSaved({ time: formatJam(option.submittedAt), by: option.homeroom })
+      setLastSaved({ time: formatJam(option.submittedAt), by: option.submittedBy ?? "Guru" })
     } else {
       setHasSaved(false)
       setLastSaved(null)
@@ -210,19 +210,20 @@ export default function AbsensiInputPage() {
     setSaving(true)
     try {
       const response = await fetch("/api/attendance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classId: selectedClass, date, records: roster.map((s) => ({ studentId: s.id, status: (statuses[s.id] ?? "belum").toUpperCase(), note: notes[s.id] })) }) })
-      if (!response.ok) throw new Error()
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? "Absensi gagal disimpan")
       const time = currentJam()
       setSaving(false)
       setSaveOpen(false)
       setSavedAt(time)
       setHasSaved(true)
       setDirty(false)
-      setLastSaved({ time, by: classOption?.homeroom ?? "Guru" })
+      setLastSaved({ time, by: data.submittedBy ?? "Guru" })
       setSuccessOpen(true)
       toast.success("Absensi tersimpan", {
         description: `${classOption?.name ?? ""} • pukul ${time}`,
       })
-    } catch { setSaving(false); toast.error("Absensi gagal disimpan") }
+    } catch (error) { setSaving(false); toast.error(error instanceof Error ? error.message : "Absensi gagal disimpan") }
   }, [classOption, selectedClass, date, roster, statuses, notes])
 
   const confirmLeave = useCallback(() => {

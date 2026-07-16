@@ -13,6 +13,7 @@ const settingInput = z.object({
   attendanceOpenTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   attendanceCloseTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   autoLock: z.boolean(),
+  allowTeachersAccessAllClasses: z.boolean(),
 })
 
 const settingSelect = {
@@ -24,6 +25,7 @@ const settingSelect = {
   attendanceOpenTime: true,
   attendanceCloseTime: true,
   autoLock: true,
+  allowTeachersAccessAllClasses: true,
   faviconData: true,
   faviconUpdatedAt: true,
 } as const
@@ -37,6 +39,7 @@ function settingResponse(setting: {
   attendanceOpenTime: string
   attendanceCloseTime: string
   autoLock: boolean
+  allowTeachersAccessAllClasses: boolean
   faviconData: Uint8Array | null
   faviconUpdatedAt: Date | null
 }) {
