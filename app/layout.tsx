@@ -1,11 +1,12 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
+import { connection } from "next/server"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { AppShell } from "@/components/layout/app-shell"
 import { Toaster } from "@/components/ui/sonner"
 import { SessionProvider } from "@/components/auth/session-provider"
 import { SiteBranding } from "@/components/site-branding"
-import { DEFAULT_WEBSITE_TITLE } from "@/lib/site-branding"
+import { defaultSiteBranding, readSiteBranding } from "@/lib/server-site-branding"
 import "./globals.css"
 
 const jakarta = Plus_Jakarta_Sans({
@@ -14,15 +15,25 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 })
 
-export const metadata: Metadata = {
-  title: DEFAULT_WEBSITE_TITLE,
-  description:
-    "Ringkasan absensi dan kelengkapan input harian untuk admin dan guru. Pantau kehadiran siswa dan progress input tiap kelas dalam satu tampilan.",
-  generator: "v0.app",
-  icons: {
-    icon: [{ url: "/favicon.ico" }],
-    apple: "/favicon.ico",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  await connection()
+  let branding = defaultSiteBranding
+  try {
+    branding = await readSiteBranding()
+  } catch (error) {
+    console.error("Gagal memuat branding website untuk metadata", error)
+  }
+
+  return {
+    title: branding.websiteTitle,
+    description:
+      "Ringkasan absensi dan kelengkapan input harian untuk admin dan guru. Pantau kehadiran siswa dan progress input tiap kelas dalam satu tampilan.",
+    generator: "v0.app",
+    icons: {
+      icon: [{ url: branding.faviconUrl }],
+      apple: branding.faviconUrl,
+    },
+  }
 }
 
 export const viewport: Viewport = {

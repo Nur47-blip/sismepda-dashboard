@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { DEFAULT_WEBSITE_TITLE, faviconUrl } from "@/lib/site-branding"
+import { defaultSiteBranding, readSiteBranding } from "@/lib/server-site-branding"
 
 export async function GET() {
   try {
-    const setting = await prisma.schoolSetting.findUnique({
-      where: { id: "default" },
-      select: { websiteTitle: true, faviconUpdatedAt: true },
+    return NextResponse.json(await readSiteBranding(), { headers: { "Cache-Control": "no-store" } })
+  } catch (error) {
+    console.error("Gagal memuat branding website", error)
+    return NextResponse.json(defaultSiteBranding, {
+      status: 503,
+      headers: { "Cache-Control": "no-store" },
     })
-    return NextResponse.json({
-      websiteTitle: setting?.websiteTitle || DEFAULT_WEBSITE_TITLE,
-      faviconUrl: faviconUrl(setting?.faviconUpdatedAt),
-    }, { headers: { "Cache-Control": "no-store" } })
-  } catch {
-    return NextResponse.json({
-      websiteTitle: DEFAULT_WEBSITE_TITLE,
-      faviconUrl: "/favicon.ico",
-    }, { headers: { "Cache-Control": "no-store" } })
   }
 }

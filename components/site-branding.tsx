@@ -1,8 +1,11 @@
 "use client"
 
 import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 
 export function SiteBranding() {
+  const pathname = usePathname()
+
   useEffect(() => {
     const controller = new AbortController()
     fetch("/site-branding.json", { cache: "no-store", signal: controller.signal })
@@ -18,7 +21,7 @@ export function SiteBranding() {
       })
       .catch(() => undefined)
     return () => controller.abort()
-  }, [])
+  }, [pathname])
 
   return null
 }
