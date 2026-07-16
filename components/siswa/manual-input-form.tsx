@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import {
+  buildRegisteredStudentIdentifiers,
   validateManual,
   type ManualErrors,
   type RegisteredStudentIdentifiers,
@@ -41,7 +42,7 @@ export function ManualInputForm() {
   const [classOptions, setClassOptions] = useState<string[]>([])
   const [registered, setRegistered] = useState<RegisteredStudentIdentifiers>({ nis: {}, nisn: {} })
 
-  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegistered({ nis: Object.fromEntries(data.students.filter((student: { nis: string | null }) => student.nis).map((student: { nis: string; name: string }) => [student.nis, student.name])), nisn: Object.fromEntries(data.students.filter((student: { nisn: string | null }) => student.nisn).map((student: { nisn: string; name: string }) => [student.nisn, student.name])) }) }) }, [])
+  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegistered(buildRegisteredStudentIdentifiers(data.students)) }) }, [])
 
   const [touched, setTouched] = useState(false)
   const [errors, setErrors] = useState<ManualErrors>({})
@@ -71,12 +72,12 @@ export function ManualInputForm() {
     setErrors(validation)
 
     if (validation.nis === "NIS sudah terdaftar pada siswa lain") {
-      setDuplicateInfo({ label: "NIS", value: nis, nama: registered.nis[nis] ?? "siswa lain" })
+      setDuplicateInfo({ label: "NIS", value: nis, nama: registered.nis[nis]?.name ?? "siswa lain" })
       return
     }
 
     if (validation.nisn === "NISN sudah terdaftar pada siswa lain") {
-      setDuplicateInfo({ label: "NISN", value: nisn, nama: registered.nisn[nisn] ?? "siswa lain" })
+      setDuplicateInfo({ label: "NISN", value: nisn, nama: registered.nisn[nisn]?.name ?? "siswa lain" })
       return
     }
 

@@ -21,6 +21,11 @@ const student = z.object({
   message: "Minimal salah satu NIS atau NISN wajib diisi",
 })
 
+const csvImport = z.object({
+  behavior: z.enum(["skip", "update"]),
+  rows: z.array(student).min(1).max(10000),
+})
+
 function isDuplicateError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002"
 }
@@ -126,6 +131,69 @@ export async function POST(request: Request) {
   try {
     await requireAdmin()
     const body = await request.json()
+    const parsedImport = csvImport.safeParse(body)
+    if (parsedImport.success) {
+      const result = await prisma.$transaction(async (tx) => {
+        const classNames = [...new Set(parsedImport.data.rows.map((row) => row.className))]
+        const [classes, existingStudents] = await Promise.all([
+          tx.schoolClass.findMany({ where: { name: { in: classNames } }, select: { id: true, name: true } }),
+          tx.student.findMany({ select: { id: true, nis: true, nisn: true, name: true } }),
+        ])
+        const classByName = new Map(classes.map((item) => [item.name, item.id]))
+        if (classes.length !== classNames.length) throw new Error("CLASS_NOT_FOUND")
+
+        const byNis = new Map(existingStudents.filter((item) => item.nis).map((item) => [item.nis as string, item]))
+        const byNisn = new Map(existingStudents.filter((item) => item.nisn).map((item) => [item.nisn as string, item]))
+        let added = 0
+        let updated = 0
+        let skipped = 0
+
+        for (const row of parsedImport.data.rows) {
+          const nisnMatch = row.nisn ? byNisn.get(row.nisn) : undefined
+          const nisMatch = row.nis ? byNis.get(row.nis) : undefined
+          if (nisnMatch && nisMatch && nisnMatch.id !== nisMatch.id) {
+            throw new Error("IDENTIFIER_CONFLICT")
+          }
+
+          const target = nisnMatch ?? nisMatch
+          if (target && parsedImport.data.behavior === "skip") {
+            skipped += 1
+            continue
+          }
+
+          const classId = classByName.get(row.className)
+          if (!classId) throw new Error("CLASS_NOT_FOUND")
+          if (target) {
+            const next = await tx.student.update({
+              where: { id: target.id },
+              data: {
+                name: row.name,
+                classId,
+                ...(row.nis ? { nis: row.nis } : {}),
+                ...(row.nisn ? { nisn: row.nisn } : {}),
+              },
+              select: { id: true, nis: true, nisn: true, name: true },
+            })
+            if (target.nis && target.nis !== next.nis) byNis.delete(target.nis)
+            if (target.nisn && target.nisn !== next.nisn) byNisn.delete(target.nisn)
+            if (next.nis) byNis.set(next.nis, next)
+            if (next.nisn) byNisn.set(next.nisn, next)
+            updated += 1
+          } else {
+            const created = await tx.student.create({
+              data: { nis: row.nis, nisn: row.nisn, name: row.name, classId },
+              select: { id: true, nis: true, nisn: true, name: true },
+            })
+            if (created.nis) byNis.set(created.nis, created)
+            if (created.nisn) byNisn.set(created.nisn, created)
+            added += 1
+          }
+        }
+        return { added, updated, skipped }
+      })
+      return NextResponse.json(result, { status: 201 })
+    }
+
     const rows = z.array(student).parse(Array.isArray(body) ? body : [body])
     let count = 0
     for (const row of rows) {
@@ -137,9 +205,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ count }, { status: 201 })
   } catch (error) {
     const duplicate = isDuplicateError(error)
+    const conflict = error instanceof Error && error.message === "IDENTIFIER_CONFLICT"
     return NextResponse.json(
-      { error: duplicate ? "NIS atau NISN sudah terdaftar" : "Data siswa tidak valid" },
-      { status: duplicate ? 409 : 400 },
+      { error: conflict ? "NIS dan NISN mengarah ke dua siswa yang berbeda" : duplicate ? "NIS atau NISN sudah terdaftar" : "Data siswa tidak valid" },
+      { status: duplicate || conflict ? 409 : 400 },
     )
   }
 }

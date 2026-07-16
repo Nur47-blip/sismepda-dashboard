@@ -62,17 +62,36 @@ export function validateManual(values: {
 // ---------- Parsing & validasi CSV ----------
 
 export type RegisteredStudentIdentifiers = {
-  nis: Record<string, string>
-  nisn: Record<string, string>
+  nis: Record<string, RegisteredStudent>
+  nisn: Record<string, RegisteredStudent>
+}
+
+export type RegisteredStudent = {
+  id: string
+  nis: string | null
+  nisn: string | null
+  name: string
 }
 
 export const EMPTY_REGISTERED_STUDENT: RegisteredStudentIdentifiers = { nis: {}, nisn: {} }
+
+export function buildRegisteredStudentIdentifiers(students: RegisteredStudent[]): RegisteredStudentIdentifiers {
+  return {
+    nis: Object.fromEntries(students.filter((student) => student.nis).map((student) => [student.nis, student])),
+    nisn: Object.fromEntries(students.filter((student) => student.nisn).map((student) => [student.nisn, student])),
+  }
+}
+
+export type CsvImportBehavior = "skip" | "update"
 
 export const CSV_HEADERS = ["nis", "nisn", "nama_lengkap", "kelas"] as const
 const LEGACY_CSV_HEADERS = ["nisn", "nama_lengkap", "kelas"] as const
 
 export type CsvRowStatus =
   | "valid"
+  | "update_nisn"
+  | "update_nis"
+  | "identifier_conflict"
   | "identifier_kosong"
   | "nis_terdaftar"
   | "nis_tidak_valid"
@@ -99,6 +118,8 @@ export type CsvParseResult =
       ok: true
       rows: CsvRow[]
       valid: number
+      update: number
+      ready: number
       duplicateDb: number
       problem: number
       total: number
@@ -109,6 +130,7 @@ export function parseCsv(
   classOptions: string[] = [],
   registered: RegisteredStudentIdentifiers = EMPTY_REGISTERED_STUDENT,
   delimiter = ",",
+  behavior: CsvImportBehavior = "skip",
 ): CsvParseResult {
   const records = parseDelimitedText(text, delimiter)
 
@@ -146,6 +168,8 @@ export function parseCsv(
     const nama = (cells[1 + offset] ?? "").trim()
     const kelas = (cells[2 + offset] ?? "").trim()
     const baris = index + 2 // baris 1 adalah header
+    const nisnMatch = nisn ? registered.nisn[nisn] : undefined
+    const nisMatch = nis ? registered.nis[nis] : undefined
 
     let status: CsvRowStatus = "valid"
     if (!nis && !nisn) {
@@ -154,33 +178,38 @@ export function parseCsv(
       status = "nis_tidak_valid"
     } else if (nis && (nisSeen.get(nis) ?? 0) > 1) {
       status = "nis_duplikat_file"
-    } else if (nis && registered.nis[nis]) {
-      status = "nis_terdaftar"
     } else if (nisn && !isValidNisnFormat(nisn)) {
       status = "nisn_tidak_valid"
     } else if (nisn && (nisnSeen.get(nisn) ?? 0) > 1) {
       status = "nisn_duplikat_file"
-    } else if (nisn && registered.nisn[nisn]) {
-      status = "nisn_terdaftar"
+    } else if (nisnMatch && nisMatch && nisnMatch.id !== nisMatch.id) {
+      status = "identifier_conflict"
     } else if (!nama) {
       status = "nama_kosong"
     } else if (!kelas) {
       status = "kelas_kosong"
     } else if (!classOptions.some((item) => item.toLowerCase() === kelas.toLowerCase())) {
       status = "kelas_tidak_ditemukan"
+    } else if (nisnMatch || nisMatch) {
+      status = behavior === "skip"
+        ? (nisnMatch ? "nisn_terdaftar" : "nis_terdaftar")
+        : (nisnMatch ? "update_nisn" : "update_nis")
     }
 
     return { baris, nis, nisn, nama, kelas, status }
   })
 
   const valid = rows.filter((r) => r.status === "valid").length
+  const update = rows.filter((r) => r.status === "update_nisn" || r.status === "update_nis").length
   const duplicateDb = rows.filter((r) => r.status === "nis_terdaftar" || r.status === "nisn_terdaftar").length
-  const problem = rows.length - valid - duplicateDb
+  const problem = rows.length - valid - update - duplicateDb
 
   return {
     ok: true,
     rows,
     valid,
+    update,
+    ready: valid + update,
     duplicateDb,
     problem,
     total: rows.length,
@@ -189,9 +218,12 @@ export function parseCsv(
 
 export const csvStatusMeta: Record<
   CsvRowStatus,
-  { label: string; tone: "valid" | "skip" | "error" }
+  { label: string; tone: "valid" | "update" | "skip" | "error" }
 > = {
-  valid: { label: "Valid", tone: "valid" },
+  valid: { label: "Siswa baru", tone: "valid" },
+  update_nisn: { label: "Akan diperbarui (NISN)", tone: "update" },
+  update_nis: { label: "Akan diperbarui (NIS)", tone: "update" },
+  identifier_conflict: { label: "Konflik NIS dan NISN", tone: "error" },
   identifier_kosong: { label: "NIS/NISN kosong", tone: "error" },
   nis_terdaftar: { label: "NIS sudah terdaftar", tone: "skip" },
   nis_tidak_valid: { label: "NIS tidak valid", tone: "error" },

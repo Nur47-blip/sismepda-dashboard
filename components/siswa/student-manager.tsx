@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,9 +11,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { compareClassNames } from "@/lib/class-order"
 
 type Student = { id: string; nis: string | null; nisn: string | null; name: string; className: string; active: boolean }
 type EditValues = { nis: string; nisn: string; name: string; className: string }
+type SortKey = "name" | "nis" | "nisn" | "className" | "active"
+type SortDirection = "asc" | "desc"
 
 export function StudentManager() {
   const [students, setStudents] = useState<Student[]>([])
@@ -23,6 +26,8 @@ export function StudentManager() {
   const [query, setQuery] = useState("")
   const [classFilter, setClassFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("active")
+  const [sortKey, setSortKey] = useState<SortKey>("name")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [editing, setEditing] = useState<Student | null>(null)
   const [values, setValues] = useState<EditValues>({ nis: "", nisn: "", name: "", className: "" })
   const [statusTarget, setStatusTarget] = useState<Student | null>(null)
@@ -43,13 +48,40 @@ export function StudentManager() {
 
   useEffect(() => { void loadStudents() }, [])
 
-  const filtered = useMemo(() => students.filter((student) => {
-    const keyword = query.trim().toLowerCase()
-    const matchesQuery = !keyword || student.name.toLowerCase().includes(keyword) || student.nis?.includes(keyword) || student.nisn?.includes(keyword)
-    const matchesClass = classFilter === "all" || student.className === classFilter
-    const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? student.active : !student.active)
-    return matchesQuery && matchesClass && matchesStatus
-  }), [students, query, classFilter, statusFilter])
+  const filtered = useMemo(() => {
+    const rows = students.filter((student) => {
+      const keyword = query.trim().toLowerCase()
+      const matchesQuery = !keyword || student.name.toLowerCase().includes(keyword) || student.nis?.includes(keyword) || student.nisn?.includes(keyword)
+      const matchesClass = classFilter === "all" || student.className === classFilter
+      const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? student.active : !student.active)
+      return matchesQuery && matchesClass && matchesStatus
+    })
+    const direction = sortDirection === "asc" ? 1 : -1
+    return rows.sort((a, b) => {
+      let comparison = 0
+      if (sortKey === "name") comparison = a.name.localeCompare(b.name, "id")
+      if (sortKey === "className") comparison = compareClassNames(a.className, b.className)
+      if (sortKey === "active") comparison = a.active === b.active ? 0 : a.active ? -1 : 1
+      if (sortKey === "nis" || sortKey === "nisn") {
+        const first = a[sortKey]
+        const second = b[sortKey]
+        if (!first && !second) comparison = 0
+        else if (!first) return 1
+        else if (!second) return -1
+        else comparison = first.localeCompare(second, "id", { numeric: true })
+      }
+      return comparison * direction || a.name.localeCompare(b.name, "id")
+    })
+  }, [students, query, classFilter, statusFilter, sortDirection, sortKey])
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => current === "asc" ? "desc" : "asc")
+    } else {
+      setSortKey(key)
+      setSortDirection("asc")
+    }
+  }
 
   function openEdit(student: Student) {
     setEditing(student)
@@ -125,7 +157,7 @@ export function StudentManager() {
       </Card>
 
       <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table>
-        <TableHeader><TableRow><TableHead>Nama Siswa</TableHead><TableHead>NIS</TableHead><TableHead>NISN</TableHead><TableHead>Kelas</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><SortableHead label="Nama Siswa" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={toggleSort} /><SortableHead label="NIS" sortKey="nis" activeKey={sortKey} direction={sortDirection} onSort={toggleSort} /><SortableHead label="NISN" sortKey="nisn" activeKey={sortKey} direction={sortDirection} onSort={toggleSort} /><SortableHead label="Kelas" sortKey="className" activeKey={sortKey} direction={sortDirection} onSort={toggleSort} /><SortableHead label="Status" sortKey="active" activeKey={sortKey} direction={sortDirection} onSort={toggleSort} /><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
         <TableBody>
           {loading ? <TableRow><TableCell colSpan={6} className="py-12 text-center"><Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" /></TableCell></TableRow> : filtered.length === 0 ? <TableRow><TableCell colSpan={6} className="py-12 text-center text-muted-foreground">Tidak ada siswa yang sesuai.</TableCell></TableRow> : filtered.map((student) => (
             <TableRow key={student.id} className={!student.active ? "opacity-65" : undefined}>
@@ -147,5 +179,37 @@ export function StudentManager() {
 
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !saving) { setDeleteTarget(null); setDeleteConfirmation("") } }}><DialogContent><DialogHeader><DialogTitle>Hapus siswa secara permanen?</DialogTitle><DialogDescription>Tindakan ini akan menghapus {deleteTarget?.name} dan seluruh riwayat absensinya. Data tidak dapat dipulihkan. Ketik {deleteTarget?.nis ? "NIS" : "NISN"} siswa untuk mengonfirmasi.</DialogDescription></DialogHeader><div className="space-y-1.5"><Label htmlFor="delete-identifier">Ketik {deleteTarget?.nis ? "NIS" : "NISN"} {deleteTarget?.nis ?? deleteTarget?.nisn}</Label><Input id="delete-identifier" inputMode="numeric" autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value.replace(/\D/g, "").slice(0, 30))} placeholder="Masukkan identitas siswa" /></div><DialogFooter><DialogClose render={<Button variant="outline" disabled={saving} />}>Batal</DialogClose><Button variant="destructive" onClick={deleteStudent} disabled={saving || deleteConfirmation !== (deleteTarget?.nis ?? deleteTarget?.nisn)}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}{saving ? "Menghapus..." : "Hapus Permanen"}</Button></DialogFooter></DialogContent></Dialog>
     </div>
+  )
+}
+
+function SortableHead({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string
+  sortKey: SortKey
+  activeKey: SortKey
+  direction: SortDirection
+  onSort: (key: SortKey) => void
+}) {
+  const active = sortKey === activeKey
+  return (
+    <TableHead aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1.5 rounded-md py-1 font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {label}
+        {active
+          ? direction === "asc"
+            ? <ArrowUp className="size-3.5 text-primary" />
+            : <ArrowDown className="size-3.5 text-primary" />
+          : <ChevronsUpDown className="size-3.5 text-muted-foreground/60" />}
+      </button>
+    </TableHead>
   )
 }

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { CsvDelimiterField } from "@/components/csv-delimiter-field"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -39,9 +40,11 @@ import { cn } from "@/lib/utils"
 import { changeCsvDelimiter } from "@/lib/csv"
 import {
   CSV_TEMPLATE,
+  buildRegisteredStudentIdentifiers,
   csvStatusMeta,
   parseCsv,
   type CsvParseResult,
+  type CsvImportBehavior,
   type CsvRow,
   type RegisteredStudentIdentifiers,
 } from "@/lib/student-input"
@@ -56,6 +59,7 @@ type FileInfo = {
 
 type ImportResult = {
   added: number
+  updated: number
   skipped: number
   failed: number
 }
@@ -66,10 +70,12 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
-function toneBadge(tone: "valid" | "skip" | "error") {
+function toneBadge(tone: "valid" | "update" | "skip" | "error") {
   switch (tone) {
     case "valid":
       return "bg-[var(--chart-1)]/12 text-[var(--chart-1)]"
+    case "update":
+      return "bg-[var(--chart-2)]/12 text-[var(--chart-2)]"
     case "skip":
       return "bg-[var(--chart-4)]/15 text-[var(--chart-4)]"
     case "error":
@@ -79,10 +85,18 @@ function toneBadge(tone: "valid" | "skip" | "error") {
 
 export function CsvUpload() {
   const [delimiter, setDelimiter] = useState(",")
+  const [behavior, setBehavior] = useState<CsvImportBehavior>("skip")
   const [fileText, setFileText] = useState<string | null>(null)
   const [classOptions, setClassOptions] = useState<string[]>([])
   const [registered, setRegistered] = useState<RegisteredStudentIdentifiers>({ nis: {}, nisn: {} })
-  useEffect(() => { fetch("/api/admin/students").then((response) => response.json()).then((data) => { setClassOptions(data.classes); setRegistered({ nis: Object.fromEntries(data.students.filter((student: { nis: string | null }) => student.nis).map((student: { nis: string; name: string }) => [student.nis, student.name])), nisn: Object.fromEntries(data.students.filter((student: { nisn: string | null }) => student.nisn).map((student: { nisn: string; name: string }) => [student.nisn, student.name])) }) }) }, [])
+  const loadStudentOptions = useCallback(async () => {
+    const response = await fetch("/api/admin/students")
+    if (!response.ok) return
+    const data = await response.json()
+    setClassOptions(data.classes)
+    setRegistered(buildRegisteredStudentIdentifiers(data.students))
+  }, [])
+  useEffect(() => { void loadStudentOptions() }, [loadStudentOptions])
   const [dragging, setDragging] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
@@ -121,9 +135,16 @@ export function CsvUpload() {
   const handleDelimiterChange = useCallback((nextDelimiter: string) => {
     setDelimiter(nextDelimiter)
     if (fileText !== null) {
-      setParseResult(parseCsv(fileText, classOptions, registered, nextDelimiter))
+      setParseResult(parseCsv(fileText, classOptions, registered, nextDelimiter, behavior))
     }
-  }, [classOptions, fileText, registered])
+  }, [behavior, classOptions, fileText, registered])
+
+  const handleBehaviorChange = useCallback((nextBehavior: CsvImportBehavior) => {
+    setBehavior(nextBehavior)
+    if (fileText !== null) {
+      setParseResult(parseCsv(fileText, classOptions, registered, delimiter, nextBehavior))
+    }
+  }, [classOptions, delimiter, fileText, registered])
 
   const processFile = useCallback((file: File) => {
     setFileError(null)
@@ -151,7 +172,7 @@ export function CsvUpload() {
     }
     reader.onload = () => {
       const text = String(reader.result ?? "")
-      const result = parseCsv(text, classOptions, registered, delimiter)
+      const result = parseCsv(text, classOptions, registered, delimiter, behavior)
       const rowCount = result.ok ? result.total : 0
       setFileInfo({
         name: file.name,
@@ -167,7 +188,7 @@ export function CsvUpload() {
       void rowCount
     }
     reader.readAsText(file)
-  }, [classOptions, delimiter, registered])
+  }, [behavior, classOptions, delimiter, registered])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -179,25 +200,29 @@ export function CsvUpload() {
     [processFile],
   )
 
-  const validCount = parseResult?.ok ? parseResult.valid : 0
-  const canImport = Boolean(parseResult?.ok) && !reading && validCount > 0
+  const readyCount = parseResult?.ok ? parseResult.ready : 0
+  const processCount = parseResult?.ok ? parseResult.ready + parseResult.duplicateDb : 0
+  const canImport = Boolean(parseResult?.ok) && !reading && (readyCount > 0 || (behavior === "skip" && (parseResult?.ok ? parseResult.duplicateDb : 0) > 0))
 
   const doImport = useCallback(async () => {
     if (!parseResult?.ok) return
     setImporting(true)
     try {
-      const validRows = parseResult.rows.filter((r) => r.status === "valid")
-      const response = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validRows.map((r) => ({ nis: r.nis, nisn: r.nisn, name: r.nama, className: r.kelas }))) })
-      if (!response.ok) throw new Error()
+      const importRows = parseResult.rows.filter((row) => csvStatusMeta[row.status].tone !== "error")
+      const response = await fetch("/api/admin/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ behavior, rows: importRows.map((r) => ({ nis: r.nis, nisn: r.nisn, name: r.nama, className: r.kelas })) }) })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? "Import siswa gagal")
+      await loadStudentOptions()
       setImporting(false)
       setConfirmOpen(false)
       setImportResult({
-        added: parseResult.valid,
-        skipped: parseResult.duplicateDb,
+        added: result.added,
+        updated: result.updated,
+        skipped: result.skipped,
         failed: parseResult.problem,
       })
-    } catch { setImporting(false); toast.error("Import siswa gagal") }
-  }, [parseResult])
+    } catch (error) { setImporting(false); toast.error(error instanceof Error ? error.message : "Import siswa gagal") }
+  }, [behavior, loadStudentOptions, parseResult])
 
   const headerError = parseResult && !parseResult.ok && parseResult.error === "header"
   const emptyError = parseResult && !parseResult.ok && parseResult.error === "empty"
@@ -221,6 +246,28 @@ export function CsvUpload() {
             onChange={handleDelimiterChange}
             disabled={reading || importing}
           />
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Jika NISN atau NIS sudah ditemukan</p>
+                <p className="text-xs text-muted-foreground">Pencocokan selalu memprioritaskan NISN, kemudian NIS.</p>
+              </div>
+              <Select value={behavior} onValueChange={(value) => value && handleBehaviorChange(value as CsvImportBehavior)} disabled={reading || importing}>
+                <SelectTrigger className="w-full bg-card sm:w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="skip">Lewati data lama</SelectItem>
+                  <SelectItem value="update">Perbarui data lama</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {behavior === "update"
+                ? "Nama dan kelas akan diperbarui. NIS/NISN lama hanya berubah jika nilai baru diisi di CSV."
+                : "Data siswa yang sudah ditemukan tidak akan diubah."}
+            </p>
+          </div>
           <div className="overflow-x-auto rounded-lg border border-border/60">
             <Table>
               <TableHeader>
@@ -260,7 +307,7 @@ export function CsvUpload() {
               <li>• Minimal salah satu NIS atau NISN wajib diisi dan harus unik.</li>
               <li>• Atur kolom NIS/NISN sebagai teks di Excel agar nol depan tidak hilang.</li>
               <li>• Nama lengkap wajib diisi dan kelas harus tersedia di sistem.</li>
-              <li>• NIS atau NISN yang sudah terdaftar akan dilewati, data lama tidak ditimpa.</li>
+              <li>• Data lama akan dilewati atau diperbarui sesuai pilihan perilaku impor.</li>
             </ul>
             <Button variant="outline" className="shrink-0" onClick={handleDownloadTemplate}>
               <Download className="size-4" />
@@ -387,13 +434,14 @@ export function CsvUpload() {
           <CardHeader>
             <CardTitle className="text-base">Preview & Validasi Data</CardTitle>
             <CardDescription>
-              Hanya data valid yang akan diimpor. Data duplikat dan data bermasalah akan dilewati.
+              Preview mengikuti pilihan perilaku impor. Konflik identitas dan data bermasalah tidak akan diproses.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <SummaryStat label="Data valid" value={parseResult.valid} tone="valid" />
-              <SummaryStat label="NIS/NISN sudah terdaftar" value={parseResult.duplicateDb} tone="skip" />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <SummaryStat label="Siswa baru" value={parseResult.valid} tone="valid" />
+              <SummaryStat label="Akan diperbarui" value={parseResult.update} tone="update" />
+              <SummaryStat label="Akan dilewati" value={parseResult.duplicateDb} tone="skip" />
               <SummaryStat label="Data bermasalah" value={parseResult.problem} tone="error" />
               <SummaryStat label="Total baris" value={parseResult.total} tone="total" />
             </div>
@@ -420,9 +468,9 @@ export function CsvUpload() {
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                {validCount > 0
-                  ? `${validCount} data siap diimpor ke sistem.`
-                  : "Tidak ada data valid untuk diimpor."}
+                {processCount > 0
+                  ? `${processCount} data siap diproses sesuai perilaku impor.`
+                  : "Tidak ada data yang dapat diproses."}
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="outline" onClick={resetAll}>
@@ -430,7 +478,7 @@ export function CsvUpload() {
                 </Button>
                 <Button disabled={!canImport} onClick={() => setConfirmOpen(true)}>
                   <UploadCloud className="size-4" />
-                  Impor {validCount} Siswa Valid
+                  Proses {processCount} Data Siswa
                 </Button>
               </div>
             </div>
@@ -449,8 +497,7 @@ export function CsvUpload() {
           <DialogHeader>
             <DialogTitle>Impor data siswa?</DialogTitle>
             <DialogDescription>
-              Data yang valid akan ditambahkan ke sistem. Data duplikat dan data bermasalah akan
-              dilewati.
+              Sistem akan mencocokkan ulang NISN terlebih dahulu, kemudian NIS, sebelum melakukan perubahan.
             </DialogDescription>
           </DialogHeader>
           {parseResult?.ok ? (
@@ -460,7 +507,11 @@ export function CsvUpload() {
                 <span className="font-semibold text-[var(--chart-1)]">{parseResult.valid}</span>
               </li>
               <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Data duplikat akan dilewati</span>
+                <span className="text-muted-foreground">Data siswa akan diperbarui</span>
+                <span className="font-semibold text-[var(--chart-2)]">{parseResult.update}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-muted-foreground">Data lama akan dilewati</span>
                 <span className="font-semibold text-[var(--chart-4)]">{parseResult.duplicateDb}</span>
               </li>
               <li className="flex items-center justify-between">
@@ -494,6 +545,10 @@ export function CsvUpload() {
               <li className="flex items-center justify-between">
                 <span className="text-muted-foreground">Siswa berhasil ditambahkan</span>
                 <span className="font-semibold text-[var(--chart-1)]">{importResult.added}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="text-muted-foreground">Siswa berhasil diperbarui</span>
+                <span className="font-semibold text-[var(--chart-2)]">{importResult.updated}</span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-muted-foreground">Dilewati (NIS/NISN sudah terdaftar)</span>
@@ -531,11 +586,13 @@ function SummaryStat({
 }: {
   label: string
   value: number
-  tone: "valid" | "skip" | "error" | "total"
+  tone: "valid" | "update" | "skip" | "error" | "total"
 }) {
   const toneClass =
     tone === "valid"
       ? "border-[var(--chart-1)]/25 bg-[var(--chart-1)]/8"
+      : tone === "update"
+        ? "border-[var(--chart-2)]/25 bg-[var(--chart-2)]/8"
       : tone === "skip"
         ? "border-[var(--chart-4)]/25 bg-[var(--chart-4)]/8"
         : tone === "error"
@@ -544,6 +601,8 @@ function SummaryStat({
   const valueClass =
     tone === "valid"
       ? "text-[var(--chart-1)]"
+      : tone === "update"
+        ? "text-[var(--chart-2)]"
       : tone === "skip"
         ? "text-[var(--chart-4)]"
         : tone === "error"
