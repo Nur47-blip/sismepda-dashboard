@@ -26,6 +26,7 @@ import {
 import { TeacherCombobox } from "@/components/wali-kelas/teacher-combobox"
 import type { Teacher, WaliKelasClass } from "@/lib/wali-kelas"
 import { toast } from "sonner"
+import { ExportButton } from "@/components/export/export-button"
 
 type Assignments = Record<string, string> // classId -> teacherId
 
@@ -160,7 +161,7 @@ export function WaliKelasManager() {
         ) : (
           <span className="text-sm text-muted-foreground">Semua perubahan tersimpan</span>
         )}
-        <SaveButton />
+        <div className="flex flex-wrap gap-2"><ExportButton type="homerooms" /><SaveButton /></div>
       </div>
 
       {/* Tabel (desktop) */}

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/guru-input"
+import { ExportButton } from "@/components/export/export-button"
 
 type Teacher = {
   id: string
@@ -155,7 +156,7 @@ export function TeacherManager() {
 
   return <div className="space-y-4">
     <Card className="border-border/70">
-      <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_180px]">
+      <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_180px_auto]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama, NIP, email, atau telepon..." className="pl-9" />
@@ -168,6 +169,7 @@ export function TeacherManager() {
             <SelectItem value="all">Semua status</SelectItem>
           </SelectContent>
         </Select>
+        <ExportButton type="teachers" params={{ query, status: statusFilter }} />
       </CardContent>
     </Card>
 

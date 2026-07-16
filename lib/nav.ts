@@ -11,6 +11,7 @@ import {
   Users,
   CircleUserRound,
   Settings,
+  FileDown,
   type LucideIcon,
 } from "lucide-react"
 
@@ -91,6 +92,13 @@ export const navItems: NavItem[] = [
     href: "/rekap-siswa",
     icon: Users,
     description: "Riwayat kehadiran per siswa",
+    roles: ["ADMIN", "GURU"],
+  },
+  {
+    title: "Export Data",
+    href: "/export-data",
+    icon: FileDown,
+    description: "Download data dan rekap dalam CSV",
     roles: ["ADMIN", "GURU"],
   },
   {

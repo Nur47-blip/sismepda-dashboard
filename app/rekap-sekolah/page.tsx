@@ -11,6 +11,7 @@ import {
 import { getAbsenceRanking, getClassRecords, getHoliday } from "@/lib/server-dashboard"
 import { UrlDateFilter } from "@/components/url-date-filter"
 import { formatLongDate, localDateValue, parseDateValue } from "@/lib/date"
+import { ExportButton } from "@/components/export/export-button"
 
 const statusOrder: AttendanceStatus[] = ["hadir", "sakit", "izin", "dispensasi", "alfa"]
 
@@ -18,7 +19,7 @@ export default async function RekapSekolahPage({ searchParams }: { searchParams:
   const requestedDate = (await searchParams).date
   const date = localDateValue(parseDateValue(requestedDate))
   const holiday = await getHoliday(parseDateValue(date))
-  if (holiday) return <PageContainer><PageHeading title="Rekap Sekolah" description={`Ringkasan kehadiran seluruh siswa pada ${formatLongDate(date)}.`} action={<UrlDateFilter value={date} ariaLabel="Tanggal rekap sekolah" />} /><Card className="border-primary/30 bg-primary/5"><CardContent className="py-12 text-center"><p className="text-lg font-semibold">Hari Libur</p><p className="text-sm text-muted-foreground">{holiday.name}. Tidak ada kewajiban input absensi pada tanggal ini.</p></CardContent></Card></PageContainer>
+  if (holiday) return <PageContainer><PageHeading title="Rekap Sekolah" description={`Ringkasan kehadiran seluruh siswa pada ${formatLongDate(date)}.`} action={<><UrlDateFilter value={date} ariaLabel="Tanggal rekap sekolah" /><ExportButton type="attendance_classes" params={{ date }} /></>} /><Card className="border-primary/30 bg-primary/5"><CardContent className="py-12 text-center"><p className="text-lg font-semibold">Hari Libur</p><p className="text-sm text-muted-foreground">{holiday.name}. Tidak ada kewajiban input absensi pada tanggal ini.</p></CardContent></Card></PageContainer>
   const [classes, absenceRanking] = await Promise.all([
     getClassRecords(parseDateValue(date)),
     getAbsenceRanking(),
@@ -69,7 +70,7 @@ export default async function RekapSekolahPage({ searchParams }: { searchParams:
       <PageHeading
         title="Rekap Sekolah"
         description={`Ringkasan kehadiran seluruh siswa pada ${formatLongDate(date)}.`}
-        action={<UrlDateFilter value={date} ariaLabel="Tanggal rekap sekolah" />}
+        action={<><UrlDateFilter value={date} ariaLabel="Tanggal rekap sekolah" /><ExportButton type="attendance_classes" params={{ date }} /></>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

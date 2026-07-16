@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { compareClassNames } from "@/lib/class-order"
+import { ExportButton } from "@/components/export/export-button"
 
 type Student = { id: string; nis: string | null; nisn: string | null; name: string; className: string; active: boolean }
 type EditValues = { nis: string; nisn: string; name: string; className: string }
@@ -140,7 +141,7 @@ export function StudentManager() {
   return (
     <div className="space-y-4">
       <Card className="border-border/70">
-        <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_180px_180px]">
+        <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_180px_180px_auto]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama, NIS, atau NISN..." className="pl-9" />
@@ -153,6 +154,7 @@ export function StudentManager() {
             <SelectTrigger><SelectValue placeholder="Status siswa" /></SelectTrigger>
             <SelectContent><SelectItem value="active">Siswa aktif</SelectItem><SelectItem value="inactive">Siswa nonaktif</SelectItem><SelectItem value="all">Semua status</SelectItem></SelectContent>
           </Select>
+          <ExportButton type="students" params={{ query, class: classFilter, status: statusFilter }} />
         </CardContent>
       </Card>
 

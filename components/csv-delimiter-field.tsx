@@ -22,10 +22,12 @@ export function CsvDelimiterField({
   value,
   onChange,
   disabled = false,
+  description = "Pilih delimiter yang sama dengan file CSV Anda.",
 }: {
   value: string
   onChange: (delimiter: string) => void
   disabled?: boolean
+  description?: string
 }) {
   const mode = delimiterMode(value)
 
@@ -71,7 +73,7 @@ export function CsvDelimiterField({
         </div>
       ) : null}
       <p className="pb-0.5 text-xs text-muted-foreground">
-        Pilih delimiter yang sama dengan file CSV Anda.
+        {description}
       </p>
     </div>
   )

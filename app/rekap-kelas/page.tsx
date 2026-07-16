@@ -16,6 +16,7 @@ import { DateFilter } from "@/components/date-filter"
 import { formatLongDate, localDateValue } from "@/lib/date"
 import { StatusPill } from "@/components/dashboard/status-pill"
 import { grades_list, type ClassRecord } from "@/lib/dashboard-data"
+import { ExportButton } from "@/components/export/export-button"
 
 const gradeOptions = [
   { value: "all", label: "Semua Tingkat" },
@@ -41,14 +42,14 @@ export default function RekapKelasPage() {
     })
   }, [classes, grade, query])
 
-  if (holiday) return <PageContainer><PageHeading title="Rekap Kelas" description={`Rincian kehadiran dan status input absensi pada ${formatLongDate(date)}.`} action={<DateFilter value={date} onChange={setDate} ariaLabel="Tanggal rekap kelas" />} /><Card className="border-primary/30 bg-primary/5"><CardContent className="py-12 text-center"><p className="text-lg font-semibold">Hari Libur</p><p className="text-sm text-muted-foreground">{holiday.name}. Tidak ada kewajiban input absensi pada tanggal ini.</p></CardContent></Card></PageContainer>
+  if (holiday) return <PageContainer><PageHeading title="Rekap Kelas" description={`Rincian kehadiran dan status input absensi pada ${formatLongDate(date)}.`} action={<><DateFilter value={date} onChange={setDate} ariaLabel="Tanggal rekap kelas" /><ExportButton type="attendance_classes" params={{ date, grade, query }} /></>} /><Card className="border-primary/30 bg-primary/5"><CardContent className="py-12 text-center"><p className="text-lg font-semibold">Hari Libur</p><p className="text-sm text-muted-foreground">{holiday.name}. Tidak ada kewajiban input absensi pada tanggal ini.</p></CardContent></Card></PageContainer>
 
   return (
     <PageContainer>
       <PageHeading
         title="Rekap Kelas"
         description={`Rincian kehadiran dan status input absensi pada ${formatLongDate(date)}.`}
-        action={<DateFilter value={date} onChange={setDate} ariaLabel="Tanggal rekap kelas" />}
+        action={<><DateFilter value={date} onChange={setDate} ariaLabel="Tanggal rekap kelas" /><ExportButton type="attendance_classes" params={{ date, grade, query }} /></>}
       />
 
       <Card className="border-border/70">

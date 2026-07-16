@@ -24,6 +24,7 @@ import { DateFilter } from "@/components/date-filter"
 import { formatLongDate, localDateValue } from "@/lib/date"
 import { StatusPill } from "@/components/dashboard/status-pill"
 import type { StudentRow } from "@/lib/dashboard-data"
+import { ExportButton } from "@/components/export/export-button"
 
 const PAGE_SIZE = 15
 
@@ -61,7 +62,7 @@ export default function RekapSiswaPage() {
       <PageHeading
         title="Rekap Siswa"
         description={`Rekap kehadiran kumulatif beserta status pada ${formatLongDate(date)}.`}
-        action={<DateFilter value={date} onChange={setDate} ariaLabel="Tanggal status siswa" />}
+        action={<><DateFilter value={date} onChange={setDate} ariaLabel="Tanggal status siswa" /><ExportButton type="attendance_students" params={{ date, class: cls, query }} /></>}
       />
 
       <Card className="border-border/70">
