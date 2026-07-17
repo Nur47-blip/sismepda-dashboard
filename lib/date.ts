@@ -5,6 +5,18 @@ export function localDateValue(date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
+export function indonesiaDateValue(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? ""
+  return `${part("year")}-${part("month")}-${part("day")}`
+}
+
 export function parseDateValue(value?: string | null): Date {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return startOfToday()
   const [year, month, day] = value.split("-").map(Number)

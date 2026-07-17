@@ -12,6 +12,7 @@ import {
   CircleUserRound,
   Settings,
   FileDown,
+  MessageCircleMore,
   type LucideIcon,
 } from "lucide-react"
 
@@ -92,6 +93,13 @@ export const navItems: NavItem[] = [
     href: "/rekap-siswa",
     icon: Users,
     description: "Riwayat kehadiran per siswa",
+    roles: ["ADMIN", "GURU"],
+  },
+  {
+    title: "Laporan WhatsApp",
+    href: "/laporan-whatsapp",
+    icon: MessageCircleMore,
+    description: "Salin laporan absensi untuk WhatsApp",
     roles: ["ADMIN", "GURU"],
   },
   {

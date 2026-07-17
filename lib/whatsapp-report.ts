@@ -1,0 +1,85 @@
+import type { AttendanceStatus } from "@/app/generated/prisma/client"
+
+export type WhatsAppReportStudent = {
+  id: string
+  name: string
+  status: Exclude<AttendanceStatus, "HADIR"> | null
+}
+
+export type WhatsAppReportClass = {
+  id: string
+  name: string
+  grade: string
+  submitted: boolean
+  students: WhatsAppReportStudent[]
+}
+
+const statusSymbols: Record<Exclude<AttendanceStatus, "HADIR">, string> = {
+  SAKIT: "S",
+  IZIN: "I",
+  ALFA: "A",
+  DISPENSASI: "D",
+}
+
+const gradeLabels: Record<string, string> = {
+  VII: "7",
+  VIII: "8",
+  IX: "9",
+  "7": "7",
+  "8": "8",
+  "9": "9",
+}
+
+export function reportClassName(name: string): string {
+  const match = name.trim().match(/^(VIII|VII|IX|7|8|9)\s*(.*)$/i)
+  if (!match) return name.trim()
+  const grade = gradeLabels[match[1].toUpperCase()] ?? match[1]
+  return `${grade}${match[2].trim()}`
+}
+
+function gradeLabel(grade: string): string {
+  return gradeLabels[grade.trim().toUpperCase()] ?? grade.trim()
+}
+
+export function buildStudentAttendanceReport(
+  dateLabel: string,
+  classes: WhatsAppReportClass[],
+): string {
+  const sections = classes.map((schoolClass) => {
+    const header = `*Kelas ${reportClassName(schoolClass.name)}*`
+    if (!schoolClass.submitted || schoolClass.students.length === 0) return `${header}\nNIHIL`
+
+    const uniqueStudents = [...new Map(schoolClass.students.map((student) => [student.id, student])).values()]
+    const rows = uniqueStudents.map(
+      (student, index) => `${index + 1}. ${student.name} (${student.status ? statusSymbols[student.status] : "?"})`,
+    )
+    return `${header}\n\n${rows.join("\n")}`
+  })
+
+  return [`*Rekap Absensi Siswa*`, `*${dateLabel}*`, "", sections.join("\n\n")]
+    .join("\n")
+    .trimEnd()
+}
+
+export function buildClassesNotSubmittedReport(
+  dateLabel: string,
+  classes: WhatsAppReportClass[],
+): string {
+  const gradeOrder = ["VII", "VIII", "IX"]
+  const sections = gradeOrder.map((grade) => {
+    const missing = classes.filter(
+      (schoolClass) => gradeLabel(schoolClass.grade) === gradeLabel(grade) && !schoolClass.submitted,
+    )
+    const header = `*Kelas ${gradeLabel(grade)}*`
+    if (missing.length === 0) return `${header}\nSudah Input Semua`
+
+    const rows = missing.map(
+      (schoolClass, index) => `${index + 1}. Kelas ${reportClassName(schoolClass.name)}`,
+    )
+    return `${header}\n\n${rows.join("\n")}`
+  })
+
+  return [`*Kelas Belum Input*`, `*${dateLabel}*`, "", sections.join("\n\n")]
+    .join("\n")
+    .trimEnd()
+}
