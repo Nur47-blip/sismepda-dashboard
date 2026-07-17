@@ -34,13 +34,11 @@ export async function getWhatsAppReportClasses(date: Date): Promise<WhatsAppRepo
     const attendanceByStudent = new Map(
       day?.attendances.map((attendance) => [attendance.studentId, attendance.status]) ?? [],
     )
-    const students: WhatsAppReportStudent[] = day
-      ? schoolClass.students.flatMap((student) => {
-          const status = attendanceByStudent.get(student.id)
-          if (status === "HADIR") return []
-          return [{ id: student.id, name: student.name, status: status ?? null }]
-        })
-      : []
+    const students: WhatsAppReportStudent[] = schoolClass.students.flatMap((student) => {
+      const status = attendanceByStudent.get(student.id)
+      if (status === "HADIR") return []
+      return [{ id: student.id, name: student.name, status: status ?? null }]
+    })
 
     return {
       id: schoolClass.id,

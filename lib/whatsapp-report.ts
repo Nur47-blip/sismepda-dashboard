@@ -44,16 +44,23 @@ function gradeLabel(grade: string): string {
 export function buildStudentAttendanceReport(
   dateLabel: string,
   classes: WhatsAppReportClass[],
+  includeUnfilled = true,
 ): string {
   const sections = classes.map((schoolClass) => {
     const header = `*Kelas ${reportClassName(schoolClass.name)}*`
-    if (!schoolClass.submitted || schoolClass.students.length === 0) return `${header}\nNIHIL`
-
     const uniqueStudents = [...new Map(schoolClass.students.map((student) => [student.id, student])).values()]
-    const rows = uniqueStudents.map(
+    const hasUnfilledStudents = uniqueStudents.some((student) => student.status === null)
+    const visibleStudents = includeUnfilled
+      ? uniqueStudents
+      : uniqueStudents.filter((student) => student.status !== null)
+    const rows = visibleStudents.map(
       (student, index) => `${index + 1}. ${student.name} (${student.status ? statusSymbols[student.status] : "?"})`,
     )
-    return `${header}\n\n${rows.join("\n")}`
+    const studentList = rows.length > 0 ? `\n\n${rows.join("\n")}` : "\nNIHIL"
+    const incompleteNotice = !includeUnfilled && hasUnfilledStudents
+      ? "\nPengisian belum lengkap."
+      : ""
+    return `${header}${studentList}${incompleteNotice}`
   })
 
   return [`*Rekap Absensi Siswa*`, `*${dateLabel}*`, "", sections.join("\n\n")]
