@@ -135,7 +135,7 @@ export function TeacherCombobox({
                     className={cn(
                       "flex w-full items-start justify-between gap-2 rounded-md px-2.5 py-2 text-left transition-colors",
                       disabled
-                        ? "cursor-not-allowed opacity-60"
+                        ? "cursor-default opacity-60"
                         : "hover:bg-accent hover:text-accent-foreground",
                       isSelected && "bg-accent/60",
                     )}
