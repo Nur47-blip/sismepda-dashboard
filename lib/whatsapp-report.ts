@@ -56,7 +56,11 @@ export function buildStudentAttendanceReport(
     const rows = visibleStudents.map(
       (student, index) => `${index + 1}. ${student.name} (${student.status ? statusSymbols[student.status] : "?"})`,
     )
-    const studentList = rows.length > 0 ? `\n\n${rows.join("\n")}` : "\nNIHIL"
+    const studentList = rows.length > 0
+      ? `\n\n${rows.join("\n")}`
+      : hasUnfilledStudents
+        ? ""
+        : "\nNIHIL"
     const incompleteNotice = !includeUnfilled && hasUnfilledStudents
       ? "\nPengisian belum lengkap."
       : ""
