@@ -74,14 +74,24 @@ export function buildClassesNotSubmittedReport(
 ): string {
   const gradeOrder = ["VII", "VIII", "IX"]
   const sections = gradeOrder.map((grade) => {
-    const missing = classes.filter(
-      (schoolClass) => gradeLabel(schoolClass.grade) === gradeLabel(grade) && !schoolClass.submitted,
-    )
+    const incompleteClasses = classes.flatMap((schoolClass) => {
+      if (gradeLabel(schoolClass.grade) !== gradeLabel(grade)) return []
+      const unfilledCount = new Set(
+        schoolClass.students
+          .filter((student) => student.status === null)
+          .map((student) => student.id),
+      ).size
+      if (schoolClass.submitted && unfilledCount === 0) return []
+      return [{ schoolClass, unfilledCount }]
+    })
     const header = `*Kelas ${gradeLabel(grade)}*`
-    if (missing.length === 0) return `${header}\nSudah Input Semua`
+    if (incompleteClasses.length === 0) return `${header}\nSudah Input Semua`
 
-    const rows = missing.map(
-      (schoolClass, index) => `${index + 1}. Kelas ${reportClassName(schoolClass.name)}`,
+    const rows = incompleteClasses.map(
+      ({ schoolClass, unfilledCount }, index) =>
+        `${index + 1}. Kelas ${reportClassName(schoolClass.name)} ${
+          schoolClass.submitted ? `kurang ${unfilledCount} siswa` : "belum input"
+        }`,
     )
     return `${header}\n\n${rows.join("\n")}`
   })

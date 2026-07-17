@@ -85,7 +85,7 @@ export function WhatsAppReportView({
           />
           <WhatsAppReportCard
             title="Kelas Belum Input"
-            description="Daftar kelas yang belum menyimpan absensi, dikelompokkan per tingkat."
+            description="Daftar kelas yang belum input atau masih memiliki siswa tanpa status absensi."
             text={classesNotSubmittedReport}
           />
         </div>
